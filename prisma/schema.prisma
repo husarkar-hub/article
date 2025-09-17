@@ -1,0 +1,83 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --- Enums ---
+enum AdminRole {
+  SUPER_ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// --- Models ---
+model User {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  email          String    @unique
+  hashedPassword String
+  role           AdminRole @default(EDITOR)
+
+  
+  articles Article[] 
+
+  @@index([email])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relation to Articles
+  articles Article[] // Articles belonging to this category
+
+  @@index([name])
+}
+
+model Article {
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  title     String
+  slug      String        @unique
+  content   String
+
+  status    ArticleStatus @default(DRAFT)
+
+  isBreakingNews Boolean @default(false)
+  isTopRated     Boolean @default(false)
+
+  featuredImageUrl String?
+
+  // Relation to Author (User)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  // Relation to Category
+  categoryId String? // Make category optional if an article doesn't need one
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  views Int @default(0)
+  publishedAt DateTime?
+
+  @@index([slug])
+  @@index([status])
+  @@index([authorId])
+  @@index([categoryId]) // Index for category lookups
+}
