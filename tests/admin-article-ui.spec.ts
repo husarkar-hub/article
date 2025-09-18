@@ -8,7 +8,7 @@ const articleTitle = `Test Article ${Date.now()}`;
 const articleContent = 'This is a test article created by Playwright.';
 
 // Helper: Login as admin
-async function adminLogin(page) {
+async function adminLogin(page: any) {
   await page.goto(`${BASE_URL}/login`);
   await page.getByLabel('Email').fill(adminEmail);
   await page.getByLabel('Password').fill(adminPassword);

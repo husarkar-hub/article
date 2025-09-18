@@ -16,7 +16,7 @@ function getArticleIdFromUrl(url: string): string | null {
 
 export async function PUT(req: Request) {
   const session = await getAuthSession();
-
+console.log(session);
   if (!session?.user) {
     return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
   }

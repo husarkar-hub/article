@@ -1,21 +1,13 @@
 // app/api/admin/users/route.ts
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { Prisma, AdminRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 import { getAuthSession } from '@/lib/auth';
 import {db as prisma} from '@/lib/db';
-import {
-  STAFF_ROLES,
-  isSuperAdmin,
-  normalizeAdminRole,
-} from '@/lib/roles';
-import { prismaErrorTargetsInclude } from '@/lib/prisma';
 
-
-
-
-
+// Define role constants to match the schema
+const VALID_ROLES: AdminRole[] = ['SUPER_ADMIN', 'EDITOR'];
 
 export async function POST(req: Request) {
   const session = await getAuthSession();
@@ -24,52 +16,47 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
   }
 
-  if (!isSuperAdmin(normalizeAdminRole(session.user.role))) {
+  // Only Super Admin can create users
+  if (session.user.role !== 'SUPER_ADMIN') {
     return NextResponse.json(
-      { message: 'Only Super Admins can manage admin users.' },
+      { message: 'Only Super Administrators can create new users.' },
       { status: 403 }
     );
   }
 
   try {
     const body = await req.json();
-    const { username, email, password, role } = body as {
-      username?: string;
+    const { email, password, role } = body as {
       email?: string;
       password?: string;
-      role?: string;
+      role?: AdminRole;
     };
 
     // --- Input Validation ---
-    if (!username || !email || !password || !role) {
-      return NextResponse.json({ message: 'All fields are required.' }, { status: 400 });
+    if (!email || !password || !role) {
+      return NextResponse.json({ message: 'Email, password, and role are required.' }, { status: 400 });
     }
     if (password.length < 6) {
       return NextResponse.json({ message: 'Password must be at least 6 characters long.' }, { status: 400 });
     }
 
-    const desiredRole = normalizeAdminRole(role);
-    if (!desiredRole) {
-      return NextResponse.json({ message: 'Invalid role provided.', validRoles: STAFF_ROLES }, { status: 400 });
+    if (!VALID_ROLES.includes(role)) {
+      return NextResponse.json({ message: 'Invalid role provided.', validRoles: VALID_ROLES }, { status: 400 });
     }
 
+    // Check for existing user
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { email },
-        ],
+        email,
       },
     });
 
     if (existingUser) {
-      let message = '';
-
-      if (existingUser.email === email) message += 'Email ';
-      return NextResponse.json({ message: `${message}already exists.` }, { status: 409 });
+      return NextResponse.json({ message: 'Email already exists.' }, { status: 409 });
     }
 
     // --- Hash Password ---
-    const salt = bcrypt.genSaltSync(10);
+    const salt = bcrypt.genSaltSync(12);
     const hashedPassword = bcrypt.hashSync(password, salt);
 
     // --- Create New User ---
@@ -77,20 +64,26 @@ export async function POST(req: Request) {
       data: {
         email,
         hashedPassword,
-        role: desiredRole,
+        role,
       },
       select: {
         id: true,
         email: true,
         role: true,
         createdAt: true,
+        updatedAt: true,
       }
     });
 
+    // Format response to match frontend interface
     const formattedUser = {
       id: newUser.id,
+      username: newUser.email.split('@')[0], // Use email prefix as username
       email: newUser.email,
       role: newUser.role,
+      status: 'ACTIVE' as const,
+      createdAt: newUser.createdAt.toISOString(),
+      updatedAt: newUser.updatedAt.toISOString(),
     };
 
     return NextResponse.json(formattedUser, { status: 201 });
@@ -98,11 +91,9 @@ export async function POST(req: Request) {
     console.error('Error adding admin user:', error);
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
-        if (prismaErrorTargetsInclude(error.meta?.target, 'email')) {
+        const target = error.meta?.target as string[] | undefined;
+        if (target?.includes('email')) {
           return NextResponse.json({ message: 'Email already in use.' }, { status: 409 });
-        }
-        if (prismaErrorTargetsInclude(error.meta?.target, 'username')) {
-          return NextResponse.json({ message: 'Username already in use.' }, { status: 409 });
         }
       }
     }
@@ -121,9 +112,10 @@ export async function GET() {
     return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
   }
 
-  if (!isSuperAdmin(normalizeAdminRole(session.user.role))) {
+  // Only admins can view user list
+  if (!['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
     return NextResponse.json(
-      { message: 'Only Super Admins can view admin users.' },
+      { message: 'Only administrators can view user list.' },
       { status: 403 }
     );
   }
@@ -136,17 +128,22 @@ export async function GET() {
         email: true,
         role: true,
         createdAt: true,
+        updatedAt: true,
       }
     });
 
-    const formattedUser = users.map((user) => ({
+    // Format users to match frontend interface
+    const formattedUsers = users.map(user => ({
       id: user.id,
+      username: user.email.split('@')[0], // Use email prefix as username
       email: user.email,
       role: user.role,
-      status: 'ACTIVE',
+      status: 'ACTIVE' as const, // Default status since schema doesn't have status field
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
     }));
 
-    return NextResponse.json(formattedUser, { status: 200 });
+    return NextResponse.json(formattedUsers, { status: 200 });
   } catch (error) {
     console.error('Error fetching admin users:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -157,6 +154,11 @@ export async function GET() {
   }
 }
 
-// Block other methods
-export async function PUT() { return NextResponse.json({ message: 'Method not allowed' }, { status: 405 }); }
-export async function DELETE() { return NextResponse.json({ message: 'Method not allowed' }, { status: 405 }); }
+// Block other methods at this level - individual user operations handled in [id] routes
+export async function PUT() { 
+  return NextResponse.json({ message: 'Method not allowed' }, { status: 405 }); 
+}
+
+export async function DELETE() { 
+  return NextResponse.json({ message: 'Method not allowed' }, { status: 405 }); 
+}

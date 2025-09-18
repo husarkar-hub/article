@@ -46,10 +46,14 @@ const CardFooter = CardContent;
 const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
   const breakingNews = articles
     .filter((article) => article.isBreaking)
-    .sort(
-      (a, b) =>
-        new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime()
-    );
+    .sort((a, b) => {
+      // Safely handle date comparison with null checks
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return (
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+    });
 
   return (
     <Card className="shadow-sm">
@@ -71,7 +75,15 @@ const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
                   {article.title}
                 </Link>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(article.publishedAt!).toLocaleString()}
+                  {article.publishedAt
+                    ? new Date(article.publishedAt).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Date unavailable"}
                 </p>
                 {article.category && (
                   <Badge variant="outline" className="mt-1">
@@ -116,7 +128,11 @@ const ArticleCard = ({ article }: { article: Article }) => (
       <CardDescription>
         By {article.author} on{" "}
         {article.publishedAt
-          ? new Date(article.publishedAt).toLocaleDateString()
+          ? new Date(article.publishedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
           : "N/A"}
         {article.isBreaking && (
           <Badge variant="destructive" className="ml-2">
@@ -217,6 +233,9 @@ const GlobalArticlesPage = () => {
   useEffect(() => {
     const trackPageVisit = async () => {
       try {
+        // Only run this code on the client
+        if (typeof window === "undefined") return;
+
         const userAgent = navigator.userAgent;
         if (/bot|crawl|spider|mediapartners/i.test(userAgent)) {
           console.log("Skipping visit tracking for bot.");
@@ -241,8 +260,14 @@ const GlobalArticlesPage = () => {
       }
     };
 
+    // Ensure this only runs on the client
     if (typeof window !== "undefined") {
-      trackPageVisit();
+      // Delay slightly to ensure proper hydration
+      const timer = setTimeout(() => {
+        trackPageVisit();
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
