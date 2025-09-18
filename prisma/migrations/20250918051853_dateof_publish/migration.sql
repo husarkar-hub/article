@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "public"."Article" ALTER COLUMN "publishedAt" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "public"."visitLogs" ADD COLUMN     "visitedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

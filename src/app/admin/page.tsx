@@ -3,7 +3,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link"; // Assuming Next.js for linking
+import Link from "next/link";
+import { useRouter } from "next/navigation"; // For navigation
 
 // Import Shadcn UI components
 import {
@@ -12,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter, // Use CardFooter for actions
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,74 +26,145 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge"; // For status indicators
-import { Progress } from "@/components/ui/progress"; // For metrics visualization
-import { Search } from "lucide-react"; // For search icon
-import { Input } from "@/components/ui/input"; // For search input
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Search, Edit, Trash2, Eye, RefreshCw } from "lucide-react"; // Add more icons
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label"; // For status dropdown/select
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // For status change
 
-// --- Dummy Data ---
-// In a real app, fetch this from your backend API
+// --- Interfaces for Real Data ---
+interface Article {
+  id: string;
+  title: string;
+  slug: string;
+  author: string;
+  publishedAt: string | null; // Can be null for drafts
+  status: "Published" | "Draft" | "Archived"; // Enum of possible statuses
+  views: number;
+  isBreaking?: boolean; // Optional for breaking news
+  isTopRated?: boolean; // Optional for top rated
+}
 
-const dummyPublishedArticles = [
-  {
-    id: "art-101",
-    title: "The Rise of AI in Content Creation",
-    slug: "the-rise-of-ai-in-content-creation",
-    author: "Alice",
-    publishedAt: "2023-10-25",
-    status: "Published",
-    views: 1500,
-    comments: 45,
-  },
-  {
-    id: "art-102",
-    title: "Advanced CSS Techniques for Modern Web",
-    slug: "advanced-css-techniques-for-modern-web",
-    author: "Bob",
-    publishedAt: "2023-10-24",
-    status: "Published",
-    views: 800,
-    comments: 20,
-  },
-  {
-    id: "art-103",
-    title: "Understanding Node.js Event Loop",
-    slug: "understanding-node-js-event-loop",
-    author: "Charlie",
-    publishedAt: "2023-10-23",
-    status: "Published",
-    views: 1200,
-    comments: 30,
-  },
-  {
-    id: "art-104",
-    title: "5 Tips for Better Sleep Hygiene",
-    slug: "5-tips-for-better-sleep-hygiene",
-    author: "David",
-    publishedAt: "2023-10-22",
-    status: "Published",
-    views: 2500,
-    comments: 70,
-  },
-];
+interface DashboardMetrics {
+  totalArticles: number;
+  publishedArticles: number;
+  draftArticles: number;
+  archivedArticles: number; // Added for completeness
+  totalViews: number;
+  breakingNewsCount: number;
+  topRatedCount: number;
+}
 
-const dummyMetrics = {
-  totalArticles: 55,
-  publishedArticles: 4, // Corresponds to dummyPublishedArticles count
-  draftArticles: 12,
-  totalViews: 5500,
-  totalComments: 165,
-  breakingNewsCount: 1,
-  topRatedCount: 2,
+// --- Component for displaying a single article row ---
+const ArticleRow = ({
+  article,
+  onUpdateStatus,
+}: {
+  article: Article;
+  onUpdateStatus: (id: string, newStatus: Article["status"]) => Promise<void>;
+}) => {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<Article["status"]>(
+    article.status
+  );
+
+  const handleStatusChange = async (newStatus: Article["status"]) => {
+    setIsUpdating(true);
+    try {
+      await onUpdateStatus(article.id, newStatus);
+      setCurrentStatus(newStatus); // Update local state only on success
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      // Optionally show an error message to the user
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <TableRow key={article.id}>
+      <TableCell className="font-medium">
+        <Link
+          href={`/articles/${article.slug}`}
+          target="_blank"
+          className="text-blue-600 hover:underline flex items-center"
+        >
+          <Eye className="h-4 w-4 mr-2" /> {article.title}
+        </Link>
+      </TableCell>
+      <TableCell>{article.author}</TableCell>
+      <TableCell>
+        {article.publishedAt
+          ? new Date(article.publishedAt).toLocaleDateString()
+          : "-"}
+      </TableCell>
+      <TableCell>
+        <Select
+          value={currentStatus}
+          onValueChange={(value) =>
+            handleStatusChange(value as Article["status"])
+          }
+          disabled={isUpdating}
+        >
+          <SelectTrigger
+            
+          >
+            {article.status}{" "}
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="PUBLISHED">Published</SelectItem>
+            <SelectItem value="DRAFT">Draft</SelectItem>
+            <SelectItem value="ARCHIVED">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell className="text-right">{article.views}</TableCell>
+
+      <TableCell>
+        <div className="flex items-center justify-end space-x-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/articles/edit/${article.id}`}>
+              <Edit className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            // onClick={() => handleDelete(article.id)} // Implement delete if needed
+            disabled={isUpdating} // Disable if updating another status
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 };
 
-// --- Article Table Component ---
-const ArticlesTable = ({ articles, searchTerm }) => {
+// --- Article Table Component (Updated) ---
+const ArticlesTable = ({
+  articles,
+  searchTerm,
+  onUpdateStatus,
+}: {
+  articles: Article[];
+  searchTerm: string;
+  onUpdateStatus: (id: string, newStatus: Article["status"]) => Promise<void>;
+}) => {
   const filteredArticles = articles.filter(
     (article) =>
       article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       article.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.slug.toLowerCase().includes(searchTerm.toLowerCase())
+      article.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      article.status.toLowerCase().includes(searchTerm.toLowerCase()) // Allow searching by status
   );
 
   if (filteredArticles.length === 0) {
@@ -104,7 +177,7 @@ const ArticlesTable = ({ articles, searchTerm }) => {
 
   return (
     <Table>
-      <TableCaption>A list of published articles.</TableCaption>
+      <TableCaption>A list of articles.</TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead>Title</TableHead>
@@ -112,44 +185,17 @@ const ArticlesTable = ({ articles, searchTerm }) => {
           <TableHead>Published Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Views</TableHead>
-          <TableHead className="text-right">Comments</TableHead>
-          <TableHead>Actions</TableHead>
+        
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {filteredArticles.map((article) => (
-          <TableRow key={article.id}>
-            <TableCell className="font-medium">
-              <Link
-                href={`/articles/${article.slug}`}
-                target="_blank"
-                className="text-blue-600 hover:underline"
-              >
-                {article.title}
-              </Link>
-            </TableCell>
-            <TableCell>{article.author}</TableCell>
-            <TableCell>{article.publishedAt}</TableCell>
-            <TableCell>
-              <Badge
-                variant={
-                  article.status === "Published" ? "default" : "secondary"
-                }
-              >
-                {article.status}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">{article.views}</TableCell>
-            <TableCell className="text-right">{article.comments}</TableCell>
-            <TableCell>
-              <div className="flex items-center justify-end space-x-2">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/admin/articles/edit/${article.id}`}>Edit</Link>
-                </Button>
-                {/* Add delete button if needed */}
-              </div>
-            </TableCell>
-          </TableRow>
+          <ArticleRow
+            key={article.id}
+            article={article}
+            onUpdateStatus={onUpdateStatus}
+          />
         ))}
       </TableBody>
     </Table>
@@ -158,23 +204,154 @@ const ArticlesTable = ({ articles, searchTerm }) => {
 
 // --- Dashboard Page Component ---
 const AdminDashboardPage = () => {
-  const [publishedArticles, setPublishedArticles] = useState([]);
-  const [metrics, setMetrics] = useState(null);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loadingArticles, setLoadingArticles] = useState(true);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate fetching data
+  // --- API Call Functions ---
+  const fetchArticles = async () => {
+    setLoadingArticles(true);
+    setError(null);
+    try {
+      // Fetch from your API endpoint that lists articles
+      const response = await fetch("/api/admin/articles");
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
+      const data: Article[] = await response.json();
+      setArticles(data);
+    } catch (err: any) {
+      setError(`Failed to load articles: ${err.message}`);
+      setArticles([]); // Clear articles on error
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
+  const fetchMetrics = async () => {
+    setLoadingMetrics(true);
+    setError(null);
+    try {
+      // Fetch from your API endpoint for dashboard metrics
+      const response = await fetch("/api/admin/dashboard/metrics");
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
+      const data: DashboardMetrics = await response.json();
+      setMetrics(data);
+    } catch (err: any) {
+      setError(`Failed to load metrics: ${err.message}`);
+      setMetrics(null); // Clear metrics on error
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
+  // --- Status Update Function ---
+  const handleUpdateStatus = async (
+    id: string,
+    newStatus: Article["status"]
+  ) => {
+    try {
+      const response = await fetch(`/api/admin/articles/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            `Failed to update status (HTTP ${response.status})`
+        );
+      }
+
+      // Optimistic update or re-fetch articles after successful update
+      // For simplicity, we'll re-fetch all articles
+      fetchArticles();
+      // Optionally, re-fetch metrics if status changes affect them
+      // fetchMetrics();
+
+      // Show success message (e.g., using a toast notification)
+      console.log(`Status for article ${id} updated to ${newStatus}`);
+    } catch (error: any) {
+      console.error("Error updating article status:", error);
+      throw error; // Re-throw to be caught by ArticleRow
+    }
+  };
+
+  // --- Effect to fetch data on mount ---
   useEffect(() => {
-    // In a real app, fetch from your backend API
-    setPublishedArticles(dummyPublishedArticles);
-    setMetrics(dummyMetrics);
+    fetchArticles();
+    fetchMetrics();
   }, []);
+
+  // --- Function to delete an article (implement API endpoint for this) ---
+  const handleDeleteArticle = async (id: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to delete this article? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/admin/articles/${id}/delete`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            `Failed to delete article (HTTP ${response.status})`
+        );
+      }
+
+      // Re-fetch articles after successful deletion
+      fetchArticles();
+      fetchMetrics(); // Metrics might change (e.g., total count)
+      console.log(`Article ${id} deleted successfully.`);
+    } catch (error: any) {
+      console.error("Error deleting article:", error);
+      setError(`Failed to delete article: ${error.message}`);
+    }
+  };
+
+  // --- Right Sidebar Data (Example: Breaking/Top Rated) ---
+  const breakingNewsArticles = articles
+    .filter((article) => article.isBreaking && article.status === "Published")
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime()
+    )
+    .slice(0, 3); // Get top 3 breaking news
+
+  const topRatedArticles = articles
+    .filter((article) => article.isTopRated && article.status === "Published")
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 3); // Get top 3 top-rated
+
+  // --- Live Activity Link ---
+  const handleViewActivityLog = () => {
+    // Navigate to your logs page
+    console.log("Navigating to activity log...");
+    // router.push('/admin/logs'); // Uncomment and use router if needed
+  };
 
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
 
       {/* Metrics Cards */}
-      {metrics && (
+      {!loadingMetrics && metrics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="shadow-sm">
             <CardHeader>
@@ -217,43 +394,57 @@ const AdminDashboardPage = () => {
         </div>
       )}
 
+      {/* Loading/Error State for Metrics */}
+      {loadingMetrics && <p>Loading metrics...</p>}
+      {error && !loadingArticles && (
+        <p className="text-red-500">Error: {error}</p>
+      )}
+
       {/* Main Content Area: Articles List & Other Sections */}
-      <div className="grid grid-cols-1 lg:grid-template-columns gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {" "}
-        {/* Adjust grid columns */}
-        <Card className="col-span-2 shadow-sm">
-          {" "}
-          {/* Make article list span more columns */}
+        {/* Adjusted grid for sidebar */}
+        {/* Article List Section (Spans 2 columns) */}
+        <Card className="col-span-1 lg:col-span-2 shadow-sm">
           <CardHeader>
-            <CardTitle>Published Articles</CardTitle>
-            <CardDescription>Overview of all live articles.</CardDescription>
+            <CardTitle>Articles Management</CardTitle>
+            <CardDescription>
+              Overview and management of all articles.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {/* Search Bar for Articles */}
-            <div className="mb-4 flex items-center space-x-4">
-              <div className="relative flex-1">
+            <div className="mb-4 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+              <div className="relative flex-1 w-full">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search articles by title, author, slug..."
-                  className="pl-8 max-w-full"
+                  placeholder="Search by title, author, slug, status..."
+                  className="pl-8 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <Button asChild>
-                <Link href="/admin/articles/create">Create New Article</Link>
+                <Link href="/admin/articles">Create New Article</Link>
               </Button>
             </div>
 
             {/* Articles Table */}
-            <ArticlesTable
-              articles={publishedArticles}
-              searchTerm={searchTerm}
-            />
+            {loadingArticles && !error && <p>Loading articles...</p>}
+            {!loadingArticles && !error && (
+              <ArticlesTable
+                articles={articles}
+                searchTerm={searchTerm}
+                onUpdateStatus={handleUpdateStatus}
+              />
+            )}
+            {error && !loadingArticles && (
+              <p className="text-red-500">Error: {error}</p>
+            )}
           </CardContent>
         </Card>
-        {/* Right Sidebar / Other Dashboad Sections */}
+        {/* Right Sidebar / Other Dashboard Sections */}
         <div className="col-span-1 space-y-8">
           {/* Breaking News Section */}
           <Card className="shadow-sm">
@@ -261,38 +452,28 @@ const AdminDashboardPage = () => {
               <CardTitle>Breaking News</CardTitle>
             </CardHeader>
             <CardContent>
-              {dummyPublishedArticles.filter(
-                (a) =>
-                  a.status === "Published" &&
-                  a.title.toLowerCase().includes("ai")
-              ).length > 0 ? ( // Example filter for breaking news
-                dummyPublishedArticles
-                  .filter(
-                    (a) =>
-                      a.status === "Published" &&
-                      a.title.toLowerCase().includes("ai")
-                  ) // Replace with actual breaking news flag/logic
-                  .slice(0, 3) // Show top 3
-                  .map((article) => (
-                    <div
-                      key={article.id}
-                      className="mb-3 pb-3 border-b last:border-b-0 last:pb-0"
+              {breakingNewsArticles.length > 0 ? (
+                breakingNewsArticles.map((article) => (
+                  <div
+                    key={article.id}
+                    className="mb-3 pb-3 border-b last:border-b-0 last:pb-0"
+                  >
+                    <Link
+                      href={`/articles/${article.slug}`}
+                      target="_blank"
+                      className="font-semibold hover:underline text-blue-600 block"
                     >
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        target="_blank"
-                        className="font-semibold hover:underline text-blue-600"
-                      >
-                        {article.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {article.author} - {article.publishedAt}
-                      </p>
-                    </div>
-                  ))
+                      {article.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {article.author} -{" "}
+                      {new Date(article.publishedAt!).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))
               ) : (
                 <p className="text-muted-foreground">
-                  No breaking news articles currently.
+                  No breaking news articles.
                 </p>
               )}
             </CardContent>
@@ -304,29 +485,24 @@ const AdminDashboardPage = () => {
               <CardTitle>Top Rated Articles</CardTitle>
             </CardHeader>
             <CardContent>
-              {dummyPublishedArticles.filter((a) => a.views > 1000).length >
-              0 ? ( // Example filter for top rated
-                dummyPublishedArticles
-                  .filter((a) => a.views > 1000) // Replace with actual top-rated logic
-                  .sort((a, b) => b.views - a.views) // Sort by views descending
-                  .slice(0, 3) // Show top 3
-                  .map((article) => (
-                    <div
-                      key={article.id}
-                      className="mb-3 pb-3 border-b last:border-b-0 last:pb-0"
+              {topRatedArticles.length > 0 ? (
+                topRatedArticles.map((article) => (
+                  <div
+                    key={article.id}
+                    className="mb-3 pb-3 border-b last:border-b-0 last:pb-0"
+                  >
+                    <Link
+                      href={`/articles/${article.slug}`}
+                      target="_blank"
+                      className="font-semibold hover:underline text-blue-600 block"
                     >
-                      <Link
-                        href={`/articles/${article.slug}`}
-                        target="_blank"
-                        className="font-semibold hover:underline text-blue-600"
-                      >
-                        {article.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Views: {article.views}
-                      </p>
-                    </div>
-                  ))
+                      {article.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Views: {article.views}
+                    </p>
+                  </div>
+                ))
               ) : (
                 <p className="text-muted-foreground">
                   No top-rated articles yet.
@@ -335,19 +511,20 @@ const AdminDashboardPage = () => {
             </CardContent>
           </Card>
 
-          {/* Example: Recent Activity Summary (placeholder) */}
+          {/* Recent Activity Summary */}
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Activity log summary would go here...
+              <p className="text-muted-foreground mb-4">
+                See detailed user activity logs.
               </p>
-              {/* Could link to the User Activities page */}
-              <Button variant="outline" size="sm" asChild className="mt-4">
-                <Link href="/admin/users/activities">
-                  View Full Activity Log
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/admin/logs">
+                  {" "}
+                  {/* Link to your logs page */}
+                  View Live Activity Log
                 </Link>
               </Button>
             </CardContent>

@@ -1,7 +1,9 @@
+// app/articles/page.tsx (or wherever your GlobalArticlesPage is located)
+
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link"; // For internal navigation
+import React, { useState, useEffect, useCallback } from "react"; // Import useCallback
+import Link from "next/link";
 
 // Import Shadcn UI components
 import {
@@ -17,122 +19,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress"; // If needed for metrics
 import { Search } from "lucide-react";
-// Ensure you have these components or define them if not using Shadcn directly
-// import { EyeIcon } from "lucide-react"; // Assuming you have lucide-react installed
+import { EyeIcon } from "lucide-react"; // Assuming lucide-react is installed
 
-// Placeholder for EyeIcon if lucide-react is not installed
-const EyeIcon = ({ className, ...props }: any) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    {...props}
-  >
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-    <circle cx="12" cy="12" r="3"></circle>
-  </svg>
-);
-const CardFooter = CardContent; // Reusing CardContent for footer structure
+// --- Interfaces for Real Data ---
+interface Article {
+  id: string;
+  title: string;
+  slug: string;
+  author: string;
+  publishedAt: string | null;
+  category: string; // Assuming category is a string for simplicity here
+  isBreaking: boolean;
+  views: number;
+  // Add other properties as needed
+}
 
-// --- Dummy Data ---
-const dummyArticles = [
-  {
-    id: "art-101",
-    title: "The Rise of AI in Content Creation",
-    slug: "the-rise-of-ai-in-content-creation",
-    author: "Alice",
-    publishedAt: "2023-10-25",
-    category: "Technology",
-    isBreaking: true,
-    views: 1500,
-  },
-  {
-    id: "art-102",
-    title: "Advanced CSS Techniques for Modern Web",
-    slug: "advanced-css-techniques-for-modern-web",
-    author: "Bob",
-    publishedAt: "2023-10-24",
-    category: "Web Development",
-    isBreaking: false,
-    views: 800,
-  },
-  {
-    id: "art-103",
-    title: "Understanding Node.js Event Loop",
-    slug: "understanding-node-js-event-loop",
-    author: "Charlie",
-    publishedAt: "2023-10-23",
-    category: "Technology",
-    isBreaking: false,
-    views: 1200,
-  },
-  {
-    id: "art-104",
-    title: "5 Tips for Better Sleep Hygiene",
-    slug: "5-tips-for-better-sleep-hygiene",
-    author: "David",
-    publishedAt: "2023-10-22",
-    category: "Health",
-    isBreaking: false,
-    views: 2500,
-  },
-  {
-    id: "art-105",
-    title: "URGENT: Major Political Development!",
-    slug: "urgent-major-political-development",
-    author: "Eve",
-    publishedAt: "2023-10-27",
-    category: "Politics",
-    isBreaking: true,
-    views: 3000,
-  },
-  {
-    id: "art-106",
-    title: "New Sci-Fi Movie Trailer Released",
-    slug: "new-sci-fi-movie-trailer-released",
-    author: "Frank",
-    publishedAt: "2023-10-26",
-    category: "Entertainment",
-    isBreaking: false,
-    views: 1800,
-  },
-  {
-    id: "art-107",
-    title: "Breaking: Unexpected Market Shift!",
-    slug: "breaking-unexpected-market-shift",
-    author: "Grace",
-    publishedAt: "2023-10-27 10:00:00",
-    category: "Business",
-    isBreaking: true,
-    views: 4500,
-  }, // More recent breaking news
-];
+interface Category {
+  id: string; // Or name, depending on your API response
+  name: string;
+}
 
-const dummyCategories = [
-  { id: "all", name: "All" },
-  { id: "technology", name: "Technology" },
-  { id: "web-development", name: "Web Development" },
-  { id: "health", name: "Health" },
-  { id: "politics", name: "Politics" },
-  { id: "entertainment", name: "Entertainment" },
-  { id: "business", name: "Business" }, // Added Business category
-];
+// Reusing CardContent for footer structure if CardFooter isn't defined
+const CardFooter = CardContent;
 
-// --- Breaking News Sidebar Component ---
-const BreakingNewsSidebar = ({ articles }: { articles: any[] }) => {
-  // Filter for breaking news and sort by date (most recent first)
+// --- Breaking News Sidebar Component (can be reused or adapted) ---
+const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
   const breakingNews = articles
     .filter((article) => article.isBreaking)
     .sort(
       (a, b) =>
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime()
     );
 
   return (
@@ -143,31 +59,27 @@ const BreakingNewsSidebar = ({ articles }: { articles: any[] }) => {
       <CardContent>
         {breakingNews.length > 0 ? (
           <div className="space-y-4">
-            {breakingNews.slice(0, 5).map(
-              (
-                article // Show top 5 breaking news
-              ) => (
-                <div
-                  key={article.id}
-                  className="pb-4 border-b last:border-b-0 last:pb-0"
+            {breakingNews.slice(0, 5).map((article) => (
+              <div
+                key={article.id}
+                className="pb-4 border-b last:border-b-0 last:pb-0"
+              >
+                <Link
+                  href={`/articles/${article.slug}`}
+                  className="font-semibold hover:underline text-blue-600 block mb-1"
                 >
-                  <Link
-                    href={`/articles/${article.slug}`}
-                    className="font-semibold hover:underline text-blue-600 block mb-1"
-                  >
-                    {article.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(article.publishedAt).toLocaleString()}
-                  </p>
-                  {article.category && (
-                    <Badge variant="outline" className="mt-1">
-                      {article.category}
-                    </Badge>
-                  )}
-                </div>
-              )
-            )}
+                  {article.title}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(article.publishedAt!).toLocaleString()}
+                </p>
+                {article.category && (
+                  <Badge variant="outline" className="mt-1">
+                    {article.category}
+                  </Badge>
+                )}
+              </div>
+            ))}
             {breakingNews.length > 5 && (
               <p className="text-sm text-muted-foreground text-center">
                 <Link
@@ -190,7 +102,7 @@ const BreakingNewsSidebar = ({ articles }: { articles: any[] }) => {
 };
 
 // --- Article Card Component ---
-const ArticleCard = ({ article }: { article: any }) => (
+const ArticleCard = ({ article }: { article: Article }) => (
   <Card className="flex flex-col justify-between hover:shadow-lg transition-shadow duration-300">
     <CardHeader>
       <CardTitle>
@@ -203,7 +115,9 @@ const ArticleCard = ({ article }: { article: any }) => (
       </CardTitle>
       <CardDescription>
         By {article.author} on{" "}
-        {new Date(article.publishedAt).toLocaleDateString()}
+        {article.publishedAt
+          ? new Date(article.publishedAt).toLocaleDateString()
+          : "N/A"}
         {article.isBreaking && (
           <Badge variant="destructive" className="ml-2">
             Breaking
@@ -212,9 +126,10 @@ const ArticleCard = ({ article }: { article: any }) => (
       </CardDescription>
     </CardHeader>
     <CardContent>
+      {/* Placeholder for summary, replace with actual article summary if available */}
       <p className="text-sm text-muted-foreground line-clamp-3">
-        This is a placeholder summary for the article "{article.title}". It
-        provides insights into the latest developments and key takeaways...
+        {article.title} provides insights into the latest developments and key
+        takeaways...
       </p>
     </CardContent>
     <CardFooter className="flex justify-between items-center pt-2">
@@ -227,7 +142,7 @@ const ArticleCard = ({ article }: { article: any }) => (
 );
 
 // --- Article List Component ---
-const ArticleList = ({ articles }: { articles: any[] }) => {
+const ArticleList = ({ articles }: { articles: Article[] }) => {
   if (!articles || articles.length === 0) {
     return (
       <p className="text-muted-foreground text-center py-8">
@@ -247,40 +162,109 @@ const ArticleList = ({ articles }: { articles: any[] }) => {
 
 // --- Global Articles Page Component ---
 const GlobalArticlesPage = () => {
-  const [allArticles, setAllArticles] = useState([]);
-  const [filteredArticles, setFilteredArticles] = useState([]);
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
+  const [filteredArticles, setFilteredArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]); // State for dynamic categories
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        setLoading(true);
-        // Replace with your actual API call
-        const data = dummyArticles; // Using dummy data for now
-        setAllArticles(data);
-        setFilteredArticles(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  // --- API Call Functions ---
+  const fetchArticles = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch from your API endpoint that lists articles (e.g., /api/articles)
+      const response = await fetch("/api/articales");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
       }
-    };
-    fetchArticles();
+      const data: Article[] = await response.json();
+      setAllArticles(data);
+      setFilteredArticles(data); // Initialize filtered articles with all fetched articles
+    } catch (err: any) {
+      setError(err.message);
+      setAllArticles([]);
+      setFilteredArticles([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      // Fetch categories from your API (e.g., /api/categories)
+      const response = await fetch("/api/categories");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+      const data: Category[] = await response.json();
+      setCategories(data);
+    } catch (err: any) {
+      setError(err.message);
+      setCategories([]); // Clear categories on error
+    }
+  }, []);
+
+  // --- Track Page Visits ---
+  useEffect(() => {
+    const trackPageVisit = async () => {
+      try {
+        const userAgent = navigator.userAgent;
+        if (/bot|crawl|spider|mediapartners/i.test(userAgent)) {
+          console.log("Skipping visit tracking for bot.");
+          return;
+        }
+        const referrer = document.referrer || "Direct";
+
+        const response = await fetch("/api/trackVisitor", {
+          // Use your actual visitor tracking API endpoint
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ articleSlug: "homepage", referrer: referrer }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to track page visit:", response.statusText);
+        } else {
+          console.log("Page visit tracked successfully");
+        }
+      } catch (err) {
+        console.error("Error tracking page visit:", err);
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      trackPageVisit();
+    }
+  }, []);
+
+  // --- Fetch initial data ---
+  useEffect(() => {
+    fetchArticles();
+    fetchCategories(); // Fetch categories when the component mounts
+  }, [fetchArticles, fetchCategories]);
+
+  // --- Filter articles based on search term and selected category ---
   useEffect(() => {
     let currentFiltered = allArticles;
 
+    // Filter by category
     if (selectedCategory !== "all") {
       currentFiltered = currentFiltered.filter(
         (article) =>
-          article.category.toLowerCase() === selectedCategory.toLowerCase()
+          article.category?.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
+    // Filter by search term
     if (searchTerm) {
       currentFiltered = currentFiltered.filter(
         (article) =>
@@ -302,12 +286,11 @@ const GlobalArticlesPage = () => {
       <h1 className="text-3xl font-bold mb-6">Articles</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-8">
-        {" "}
-
+        {/* Sidebar for Breaking News */}
         <aside className="lg:col-span-1">
-          <BreakingNewsSidebar articles={allArticles} />{" "}
-          {/* Pass all articles to filter */}
+          <BreakingNewsSidebar articles={allArticles} />
         </aside>
+
         {/* Main Content Area */}
         <main className="lg:col-span-1">
           {/* Controls Section: Search and Category Filters */}
@@ -331,8 +314,12 @@ const GlobalArticlesPage = () => {
               className="w-full md:w-auto"
             >
               <TabsList>
-                {dummyCategories.map((cat) => (
+                <TabsTrigger value="all">All</TabsTrigger>{" "}
+                {/* Always include "All" category */}
+                {categories.map((cat) => (
                   <TabsTrigger key={cat.id} value={cat.id}>
+                    {" "}
+                    {/* Use cat.id for value */}
                     {cat.name}
                   </TabsTrigger>
                 ))}
@@ -354,8 +341,6 @@ const GlobalArticlesPage = () => {
           {!loading && !error && <ArticleList articles={filteredArticles} />}
         </main>
       </div>
-
-      {/* Optional: Secondary sidebar or footer content can go here */}
     </div>
   );
 };

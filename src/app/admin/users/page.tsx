@@ -1,10 +1,8 @@
-// app/admin/users/activities/page.tsx
+// app/admin/logs/page.tsx
 
-"use client"; // This page will likely need client-side interactivity
+"use client";
 
-import React, { useState, useEffect } from "react";
-
-// Import Shadcn UI components
+import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -12,275 +10,216 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button"; // For download button
-import { Label } from "@/components/ui/label"; // For download options if needed
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"; // For download format selection
-import { Search } from "lucide-react"; // For search icon
-import { Input } from "@/components/ui/input"; // For search input
+import { ScrollArea } from "@/components/ui/scroll-area"; // For scrollable content
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react"; // Icon for refresh
 
-// --- Dummy Data ---
-// In a real app, fetch this from your backend API
-const dummyUserActivities = [
-  {
-    id: 1,
-    user: "Alice",
-    userId: "u-101",
-    action: "Viewed Article",
-    target: "Intro to React",
-    timestamp: "2023-10-27 10:30:00",
-    ip: "192.168.1.10",
-  },
-  {
-    id: 2,
-    user: "Bob",
-    action: "Visited Page",
-    target: "/dashboard",
-    timestamp: "2023-10-27 10:35:15",
-    ip: "10.0.0.5",
-  },
-  {
-    id: 3,
-    user: "Alice",
-    action: "Read Article",
-    target: "Advanced CSS",
-    timestamp: "2023-10-27 10:40:00",
-    ip: "192.168.1.10",
-  },
-  {
-    id: 4,
-    user: "Charlie",
-    action: "Login",
-    target: "System",
-    timestamp: "2023-10-27 11:00:00",
-    ip: "172.16.0.20",
-  },
-  {
-    id: 5,
-    user: "Bob",
-    action: "Viewed Article",
-    target: "Node.js Basics",
-    timestamp: "2023-10-27 11:15:00",
-    ip: "10.0.0.5",
-  },
-  // Add more data...
-];
+// Placeholder for EyeIcon if needed, not directly used here but for consistency
+const EyeIcon = ({ className, ...props }: any) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
 
-// --- Activity Table Component ---
-const ActivityTable = ({ data }) => {
-  if (data.length === 0) {
-    return (
-      <p className="text-muted-foreground text-center py-4">
-        No activity found for this filter.
-      </p>
-    );
-  }
+// --- Interface for Log Data (matches your Prisma schema) ---
+interface VisitLog {
+  id: string;
+  articleSlug: string;
+  visitTimestamp: string; // Stored as string from API, will parse
+  userAgent: string | null;
+  browser: string | null;
+  os: string | null;
+  ipAddress: string | null;
+  referrer: string | null;
+  customData: any | null; // Use 'any' for flexibility with Json type
+}
+
+// --- Component for displaying a single log entry ---
+const LogEntry = ({ log }: { log: VisitLog }) => {
+  const [showDetails, setShowDetails] = useState(false);
+  const timestamp = new Date(log.visitTimestamp);
 
   return (
-    <Table>
-      <TableCaption>A list of recent user activities.</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>User</TableHead>
-          <TableHead>Action</TableHead>
-          <TableHead>Target</TableHead>
-          <TableHead>Timestamp</TableHead>
-          <TableHead>IP Address</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.map((activity) => (
-          <TableRow key={activity.id}>
-            <TableCell className="font-medium">{activity.user}</TableCell>
-            <TableCell>{activity.action}</TableCell>
-            <TableCell>{activity.target}</TableCell>
-            <TableCell>{activity.timestamp}</TableCell>
-            <TableCell>{activity.ip}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="p-4 border-b last:border-b-0 border-muted/20 hover:bg-accent/10 transition-colors duration-200">
+      <div className="flex justify-between items-center mb-2">
+        <div>
+          <span className="font-semibold text-primary">
+            {log.articleSlug === "homepage" ? "Homepage" : log.articleSlug}
+          </span>
+          <span className="text-xs text-muted-foreground ml-2">
+            ({timestamp.toLocaleString()})
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowDetails(!showDetails)}
+        >
+          {showDetails ? "Hide" : "Details"}
+        </Button>
+      </div>
+      {showDetails && (
+        <div className="mt-3 text-xs text-muted-foreground space-y-1">
+          <p>
+            <strong>IP Address:</strong> {log.ipAddress || "N/A"}
+          </p>
+          <p>
+            <strong>Browser:</strong> {log.browser || "N/A"} ({log.os || "N/A"})
+          </p>
+          <p>
+            <strong>User Agent:</strong> {log.userAgent || "N/A"}
+          </p>
+          <p>
+            <strong>Referrer:</strong> {log.referrer || "N/A"}
+          </p>
+          {log.customData && Object.keys(log.customData).length > 0 && (
+            <p>
+              <strong>Custom Data:</strong> {JSON.stringify(log.customData)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
-// --- Main Page Component ---
-const UserActivitiesPage = () => {
-  // State for activities, filtered activities, search term, and download format
-  const [activities, setActivities] = useState([]);
-  const [filteredActivities, setFilteredActivities] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [downloadFormat, setDownloadFormat] = useState("csv");
-  const [selectedTab, setSelectedTab] = useState("all"); // To manage tab state
+const AdminLogsPage = () => {
+  const [logs, setLogs] = useState<VisitLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true); 
 
-  // Simulate fetching data on mount
+  
+  const refreshIntervalId = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchLogs = async () => {
+    try {
+      setError(null); 
+      setLoading(true);
+      const response = await fetch("/api/admin/logs");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+      const data: VisitLog[] = await response.json();
+
+      const sortedData = data.sort(
+        (a, b) =>
+          new Date(b.visitTimestamp).getTime() -
+          new Date(a.visitTimestamp).getTime()
+      );
+      setLogs(sortedData);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   useEffect(() => {
-    // In a real app, replace this with your API call
-    setActivities(dummyUserActivities);
-    setFilteredActivities(dummyUserActivities); // Initialize filtered activities
-  }, []);
+    fetchLogs(); // Initial fetch
 
-  // Effect to filter activities when search term or tab changes
-  useEffect(() => {
-    let currentFiltered = activities;
-
-    // Apply tab filter
-    if (selectedTab !== "all") {
-      currentFiltered = activities.filter((activity) => {
-        if (selectedTab === "page-visits")
-          return activity.action === "Visited Page";
-        if (selectedTab === "article-reads")
-          return activity.action === "Read Article";
-        if (selectedTab === "logins") return activity.action === "Login";
-        // Add more conditions for other tabs
-        return true; // Default to show if tab doesn't match specific filter
-      });
+    if (autoRefreshEnabled) {
+    
+      refreshIntervalId.current = setInterval(fetchLogs, 10000);
     }
 
-    // Apply search filter
-    if (searchTerm) {
-      currentFiltered = currentFiltered.filter(
-        (activity) =>
-          activity.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          activity.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          activity.target.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    
+    return () => {
+      if (refreshIntervalId.current) {
+        clearInterval(refreshIntervalId.current);
+      }
+    };
+  }, [autoRefreshEnabled]); 
 
-    setFilteredActivities(currentFiltered);
-  }, [searchTerm, selectedTab, activities]); // Recalculate when these change
-
-  const handleDownload = () => {
-    console.log(`Downloading activities in format: ${downloadFormat}`);
-    // --- Implement download logic here ---
-    // This would involve formatting the 'filteredActivities' data
-    // into the selected format (CSV, JSON, etc.) and triggering a download.
-    // Example for CSV:
-    if (downloadFormat === "csv") {
-      const csvRows = [
-        ["User", "Action", "Target", "Timestamp", "IP Address"], // Header
-        ...filteredActivities.map((activity) => [
-          activity.user,
-          activity.action,
-          activity.target,
-          activity.timestamp,
-          activity.ip,
-        ]),
-      ];
-      const csvString = csvRows.map((row) => row.join(",")).join("\n");
-      const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute(
-        "download",
-        `user_activities_${new Date().toISOString().split("T")[0]}.csv`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-    } else if (downloadFormat === "json") {
-      const jsonString = JSON.stringify(filteredActivities, null, 2);
-      const blob = new Blob([jsonString], {
-        type: "application/json;charset=utf-8;",
-      });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute(
-        "download",
-        `user_activities_${new Date().toISOString().split("T")[0]}.json`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-    }
-    // Add logic for other formats like Excel if needed
+  const toggleAutoRefresh = () => {
+    setAutoRefreshEnabled(!autoRefreshEnabled);
   };
 
   return (
     <div className="container mx-auto py-8">
-      <Card className="w-full shadow-sm">
+      <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>User Activity Log</CardTitle>
+          <CardTitle>Live User Activity</CardTitle>
           <CardDescription>
-            View and manage all user interactions across the platform.
+            See who is visiting your articles in real-time.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Controls Section: Search, Filter Tabs, Download */}
-          <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
-            {/* Search Bar */}
-            <div className="w-full md:max-w-md relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search activities (user, action, target)..."
-                className="pl-8 max-w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {/* Download Options */}
-            <div className="flex items-center space-x-4">
-              <Select value={downloadFormat} onValueChange={setDownloadFormat}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Select Format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="csv">CSV</SelectItem>
-                  <SelectItem value="json">JSON</SelectItem>
-                  {/* Add more formats if desired */}
-                </SelectContent>
-              </Select>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">
+              Recent Visits ({logs.length})
+            </h3>
+            <div className="flex items-center space-x-2">
               <Button
-                onClick={handleDownload}
-                disabled={filteredActivities.length === 0}
+                variant="outline"
+                size="sm"
+                onClick={toggleAutoRefresh}
+                className={` ${
+                  autoRefreshEnabled
+                    ? "bg-green-500 text-white hover:bg-green-600"
+                    : ""
+                }`}
               >
-                Download ({filteredActivities.length})
+                {autoRefreshEnabled ? "Auto-Refresh ON" : "Auto-Refresh OFF"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={fetchLogs}
+                disabled={loading}
+                className="flex items-center"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" /> Refresh Now
               </Button>
             </div>
           </div>
 
-          {/* Tabs for Activity Filtering */}
-          <Tabs
-            defaultValue="all"
-            className="w-full"
-            onValueChange={(value) => setSelectedTab(value)}
-          >
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="page-visits">Page Visits</TabsTrigger>
-              <TabsTrigger value="article-reads">Article Reads</TabsTrigger>
-              <TabsTrigger value="logins">Logins</TabsTrigger>
-              {/* Add more triggers as needed */}
-            </TabsList>
-            {/* TabsContent components will dynamically render the ActivityTable based on selectedTab and searchTerm */}
-            {/* We render the table directly within the layout and use useEffect for filtering */}
-            {/* Alternatively, you could have specific TabsContent for each tab, which might be cleaner */}
-          </Tabs>
-
-          {/* Render the Activity Table with filtered data */}
-          <ActivityTable data={filteredActivities} />
+          <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
+            {loading && !error && (
+              <div className="text-center py-10">
+                <p>Loading logs...</p>
+              </div>
+            )}
+            {error && (
+              <div className="text-center py-10 text-red-500">
+                <p>Error loading logs: {error}</p>
+              </div>
+            )}
+            {!loading && !error && logs.length === 0 && (
+              <p className="text-center py-10 text-muted-foreground">
+                No recent visit logs found.
+              </p>
+            )}
+            {!loading && !error && logs.length > 0 && (
+              <div>
+                {logs.map((log) => (
+                  <LogEntry key={log.id} log={log} />
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </CardContent>
       </Card>
     </div>
   );
 };
 
-// You might want to add a layout wrapper if this page needs the AdminNavbar etc.
-// For now, assuming this is a standalone page within the admin section.
-export default UserActivitiesPage;
+export default AdminLogsPage;

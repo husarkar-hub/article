@@ -1,16 +1,12 @@
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import { NextAuthOptions } from 'next-auth';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { getServerSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { compare } from 'bcrypt';
-import { nanoid } from 'nanoid'; // Useful for generating usernames if missing
 
-// Assume db is imported from './db' which is your Prisma client instance
+
 import { db } from './db';
-import { match } from 'assert';
 
-// Ensure your next-auth.d.ts file is correctly set up in your project's types directory.
-// TypeScript should automatically pick it up.
+
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
@@ -72,7 +68,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     // This callback is called every time a JWT is created or updated.
-    async jwt({ token, user, trigger, session }: any) {
+    async jwt({ token, user, trigger, session }: { token: any; user?: any; trigger?: string; session?: any }) {
       // console.log('JWT Callback:', { token, user, trigger, session });
 
       // --- Update token if session is updated from client ---

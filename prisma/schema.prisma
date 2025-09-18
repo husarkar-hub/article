@@ -74,10 +74,30 @@ model Article {
   category   Category? @relation(fields: [categoryId], references: [id])
 
   views Int @default(0)
-  publishedAt DateTime?
+  publishedAt DateTime? @default(now())
 
   @@index([slug])
   @@index([status])
   @@index([authorId])
   @@index([categoryId]) // Index for category lookups
+}
+
+model ArticleVisitLog {
+  id           String   @id @default(cuid())
+  articleSlug  String   
+  visitTimestamp DateTime @default(now()) // Timestamp of the visit
+
+  // User Agent and parsed details
+  userAgent String? // Raw User-Agent string
+  browser   String? // Extracted browser name
+  os        String? // Extracted operating system
+
+  // Network details
+  ipAddress String? // Visitor's IP address
+  referrer  String? // The URL of the page that referred the visitor
+visitedAt DateTime @default(now()) // When the visit occurred
+  // Optional custom data field
+  customData Json? // For any additional structured data you might want to log
+
+  @@map("visitLogs") // Maps to the 'visitLogs' collection/table
 }

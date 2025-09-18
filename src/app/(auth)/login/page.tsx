@@ -56,7 +56,7 @@ const LoginPage = () => {
         console.log("Login successful!");
         router.push("/admin"); // Redirect to your protected admin page
       }
-    } catch (error: any) {
+    } catch (error) {
       // Catch any unexpected client-side errors
       console.error("Unexpected login error:", error);
       setError("An unexpected error occurred. Please try again later.");
@@ -111,7 +111,7 @@ const LoginPage = () => {
         </CardContent>
         <CardFooter className="flex justify-center text-sm text-gray-500">
           <p>
-            Don't have an account?{" "}
+            Don't have an account?`&apos;`
             <Link href="/sign-up" className="text-blue-500 hover:underline">
               Sign up
             </Link>
