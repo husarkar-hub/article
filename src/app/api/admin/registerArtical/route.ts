@@ -3,10 +3,12 @@
 // pages/api/articles.ts (for Pages Router)
 
 import { NextResponse } from "next/server";
-import { authOptions, getAuthSession } from "@/lib/auth"; // Adjust path as needed
+import { getAuthSession } from "@/lib/auth"; // Adjust path as needed
 import { db } from "@/lib/db"; // Adjust path as needed
-import { ArticleStatus, AdminRole } from "@prisma/client"; // Import enums
-import { nanoid } from "nanoid"; // For slug generation if needed
+import { Prisma, ArticleStatus } from "@prisma/client"; // Import enums
+
+import { ADMIN_ROLE, SUPER_ADMIN_ROLE, normalizeAdminRole } from "@/lib/roles";
+import { prismaErrorTargetsInclude } from "@/lib/prisma";
 
 // --- Function to handle POST requests to create an article ---
 export async function POST(request: Request) {
@@ -14,18 +16,24 @@ export async function POST(request: Request) {
 
   // 1. Authentication Check
   // Ensure the user is logged in and has appropriate roles (e.g., EDITOR or SUPER_ADMIN)
-  if (
-    !session ||
-    !session.user ||
-    (session.user.role !== AdminRole.EDITOR &&
-      session.user.role !== AdminRole.SUPER_ADMIN)
-  ) {
+  if (!session || !session.user) {
+    console.error("Authentication failed for article creation.");
+    return NextResponse.json(
+      { message: "Authentication required." },
+      { status: 401 }
+    );
+  }
+
+  const userRole = normalizeAdminRole(session.user.role);
+
+  if (!userRole || ![ADMIN_ROLE, SUPER_ADMIN_ROLE].includes(userRole)) {
     console.error(
-      "Authentication failed or insufficient role for article creation."
+      "Insufficient role attempting to create an article:",
+      userRole
     );
     return NextResponse.json(
-      { message: "Authentication required or insufficient permissions." },
-      { status: 401 }
+      { message: "You do not have permission to create articles." },
+      { status: 403 }
     );
   }
 
@@ -119,7 +127,8 @@ export async function POST(request: Request) {
         isTopRated: !!isTopRated,
         featuredImageUrl: featuredImageUrl || undefined,
         authorId: session.user.id, // Use the logged-in user's ID
-       
+        categoryId: categoryIds.length > 0 ? categoryIds[0] : undefined,
+
       },
     })
 
@@ -127,21 +136,23 @@ export async function POST(request: Request) {
 
     // Respond with success message and the created article data
     return NextResponse.json(newArticle, { status: 201 }); // 201 Created
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating article in database:", error);
-    // Check for specific Prisma errors if needed (e.g., unique constraint violations)
-    if (error.code === "P2002" && error.meta?.target?.includes("slug")) {
-      return NextResponse.json(
-        { message: `Article slug "${generatedSlug}" already exists.` },
-        { status: 409 }
-      );
-    }
-    if (error.code === "P2025") {
-      // Record to update not found (e.g., invalid authorId or categoryId)
-      return NextResponse.json(
-        { message: "Invalid author or category reference." },
-        { status: 400 }
-      );
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        if (prismaErrorTargetsInclude(error.meta?.target, "slug")) {
+          return NextResponse.json(
+            { message: `Article slug "${generatedSlug}" already exists.` },
+            { status: 409 }
+          );
+        }
+      }
+      if (error.code === "P2025") {
+        return NextResponse.json(
+          { message: "Invalid author or category reference." },
+          { status: 400 }
+        );
+      }
     }
     return NextResponse.json(
       { message: "Failed to create article." },

@@ -12,8 +12,8 @@ generator client {
 // --- Enums ---
 enum AdminRole {
   SUPER_ADMIN
+  ADMIN
   EDITOR
-  VIEWER
 }
 
 enum ArticleStatus {
