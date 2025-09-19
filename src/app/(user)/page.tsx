@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, EyeIcon } from "lucide-react";
+import { Search, EyeIcon, Star } from "lucide-react";
 
 // --- Interfaces for Real Data ---
 interface Article {
@@ -60,18 +60,18 @@ const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
       <CardContent>
         {breakingNews.length > 0 ? (
           <div className="space-y-4">
-            {breakingNews.slice(0, 5).map((article) => (
+            {breakingNews.slice(0, 3).map((article) => (
               <div
                 key={article.id}
-                className="pb-4 border-b last:border-b-0 last:pb-0"
+                className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors"
               >
                 <Link
                   href={`/articles/${article.slug}`}
-                  className="font-semibold hover:underline text-blue-600 block mb-1"
+                  className="font-semibold hover:underline text-destructive block mb-2"
                 >
                   {article.title}
                 </Link>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mb-2">
                   {article.publishedAt
                     ? new Date(article.publishedAt).toLocaleString("en-US", {
                         year: "numeric",
@@ -89,20 +89,94 @@ const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
                 )}
               </div>
             ))}
-            {breakingNews.length > 5 && (
-              <p className="text-sm text-muted-foreground text-center">
+            {breakingNews.length > 3 && (
+              <div className="text-center mt-4">
                 <Link
-                  href="/articles/breaking-news"
-                  className="hover:underline"
+                  href="/breaking-news"
+                  className="text-blue-600 hover:underline text-sm font-medium"
                 >
-                  More breaking news...
+                  See all breaking news →
                 </Link>
-              </p>
+              </div>
             )}
           </div>
         ) : (
           <p className="text-muted-foreground text-center py-4">
             No breaking news currently.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// --- Top Rated Articles Sidebar Component ---
+const TopRatedSidebar = ({ articles }: { articles: Article[] }) => {
+  const topRated = articles
+    .filter((article) => article.views > 0)
+    .sort((a, b) => b.views - a.views);
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Star className="h-5 w-5 text-yellow-500" />
+          Top Rated Articles
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {topRated.length > 0 ? (
+          <div className="space-y-4">
+            {topRated.slice(0, 3).map((article, index) => (
+              <div
+                key={article.id}
+                className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="bg-yellow-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <Link
+                      href={`/articles/${article.slug}`}
+                      className="font-semibold hover:underline text-primary block mb-1 text-sm line-clamp-2"
+                    >
+                      {article.title}
+                    </Link>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {article.publishedAt
+                          ? new Date(article.publishedAt).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+                      <div className="flex items-center">
+                        <EyeIcon className="h-3 w-3 mr-1" />
+                        {article.views.toLocaleString()}
+                      </div>
+                    </div>
+                    {article.category && (
+                      <Badge variant="outline" className="mt-1 text-xs">
+                        {article.category}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {topRated.length > 3 && (
+              <div className="text-center mt-4">
+                <Link
+                  href="/top-rated"
+                  className="text-blue-600 hover:underline text-sm font-medium"
+                >
+                  See all top rated →
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center py-4">
+            No top rated articles yet.
           </p>
         )}
       </CardContent>
@@ -315,13 +389,14 @@ const GlobalArticlesPage = () => {
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Articles</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-8">
-        {/* Sidebar for Breaking News */}
-        <aside className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
+        {/* Sidebar for Breaking News and Top Rated */}
+        <aside className="lg:col-span-1 space-y-6">
           <BreakingNewsSidebar articles={allArticles} />
+          <TopRatedSidebar articles={allArticles} />
         </aside>
 
         {/* Main Content Area */}
@@ -344,7 +419,7 @@ const GlobalArticlesPage = () => {
             <Tabs
               value={selectedCategory}
               onValueChange={(value) => handleCategoryChange(value)}
-              className="w-full md:w-auto"
+              className="w-full md:w-auto overflow-x-scroll"
             >
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>{" "}
@@ -378,4 +453,5 @@ const GlobalArticlesPage = () => {
   );
 };
 
+export { BreakingNewsSidebar, TopRatedSidebar, ArticleCard };
 export default GlobalArticlesPage;

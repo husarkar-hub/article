@@ -254,6 +254,14 @@ export default async function handler(
         }
       });
 
+      // Send notification to author about article creation
+      try {
+        await NotificationService.notifyArticlePublished(newArticle.id, session.user.id);
+      } catch (notificationError) {
+        console.error("Error sending notification:", notificationError);
+        // Don't fail the article creation if notification fails
+      }
+
       console.log("Article created successfully:", newArticle);
       return res.status(201).json(newArticle);
 

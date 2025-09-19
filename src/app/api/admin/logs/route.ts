@@ -3,11 +3,8 @@
 import { NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 
-
 const isAdmin = (req: Request): boolean => {
-
   console.warn("Admin check is basic for demo. Implement proper authentication!");
-  
   return true; 
 };
 
@@ -17,17 +14,39 @@ export async function GET(req: Request) {
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
+
+    // Get total count for pagination
+    const totalCount = await prisma.articleVisitLog.count();
     
+    // Get paginated logs
     const logs = await prisma.articleVisitLog.findMany({
-      take: 100, 
+      skip: offset,
+      take: limit,
       orderBy: {
         visitTimestamp: 'desc', 
       },
     });
 
-    
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasMore = page < totalPages;
 
-    return NextResponse.json(logs, { status: 200 });
+    const response = {
+      data: logs,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        total: totalCount,
+        limit,
+        hasMore,
+        offset
+      }
+    };
+
+    return NextResponse.json(response, { status: 200 });
 
   } catch (error: any) {
     console.error('Error fetching logs:', error);

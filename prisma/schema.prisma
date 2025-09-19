@@ -22,6 +22,24 @@ enum ArticleStatus {
   ARCHIVED
 }
 
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  SYSTEM
+  ARTICLE_PUBLISHED
+  USER_JOINED
+  COMMENT_ADDED
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
 // --- Models ---
 model User {
   id             String    @id @default(cuid())
@@ -31,8 +49,9 @@ model User {
   hashedPassword String
   role           AdminRole @default(EDITOR)
 
-  
-  articles Article[] 
+  articles             Article[]
+  notifications        Notification[]
+  notificationSettings NotificationSettings?
 
   @@index([email])
 }
@@ -50,15 +69,15 @@ model Category {
 }
 
 model Article {
-  id        String        @id @default(cuid())
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  title     String
-  slug      String        @unique
-  content   String
+  title   String
+  slug    String @unique
+  content String
 
-  status    ArticleStatus @default(DRAFT)
+  status ArticleStatus @default(DRAFT)
 
   isBreakingNews Boolean @default(false)
   isTopRated     Boolean @default(false)
@@ -73,8 +92,11 @@ model Article {
   categoryId String? // Make category optional if an article doesn't need one
   category   Category? @relation(fields: [categoryId], references: [id])
 
-  views Int @default(0)
+  views       Int       @default(0)
   publishedAt DateTime? @default(now())
+
+  // Notifications related to this article
+  notifications Notification[]
 
   @@index([slug])
   @@index([status])
@@ -83,8 +105,8 @@ model Article {
 }
 
 model ArticleVisitLog {
-  id           String   @id @default(cuid())
-  articleSlug  String   
+  id             String   @id @default(cuid())
+  articleSlug    String
   visitTimestamp DateTime @default(now()) // Timestamp of the visit
 
   // User Agent and parsed details
@@ -93,11 +115,70 @@ model ArticleVisitLog {
   os        String? // Extracted operating system
 
   // Network details
-  ipAddress String? // Visitor's IP address
-  referrer  String? // The URL of the page that referred the visitor
-visitedAt DateTime @default(now()) // When the visit occurred
+  ipAddress  String? // Visitor's IP address
+  referrer   String? // The URL of the page that referred the visitor
+  visitedAt  DateTime @default(now()) // When the visit occurred
   // Optional custom data field
   customData Json? // For any additional structured data you might want to log
 
   @@map("visitLogs") // Maps to the 'visitLogs' collection/table
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Core notification data
+  title    String
+  message  String
+  type     NotificationType     @default(INFO)
+  priority NotificationPriority @default(NORMAL)
+
+  // Status tracking
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Optional metadata
+  actionUrl String? // URL to navigate when clicked
+  metadata  Json? // Additional structured data
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional article reference
+  articleId String?
+  article   Article? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model NotificationSettings {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // User relation
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Email notification preferences
+  emailNotifications    Boolean @default(true)
+  emailDigest           Boolean @default(true)
+  emailArticlePublished Boolean @default(true)
+  emailUserJoined       Boolean @default(false)
+  emailSystemUpdates    Boolean @default(true)
+
+  // Browser notification preferences
+  browserNotifications Boolean @default(true)
+  soundEnabled         Boolean @default(true)
+
+  // Frequency settings
+  digestFrequency String @default("daily") // daily, weekly, never
+
+  @@index([userId])
 }

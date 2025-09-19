@@ -20,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 
-
 // --- Data Types ---
 interface Category {
   id: string;
@@ -58,7 +57,7 @@ const dummyCategories: Category[] = [
 const EditArticlePage = () => {
   const router = useRouter();
   const params = useParams();
-  const { data: session, status } = useSession();
+  const { data: _session, status: _status } = useSession();
   const articleId = params.id as string;
 
   // --- Form State ---

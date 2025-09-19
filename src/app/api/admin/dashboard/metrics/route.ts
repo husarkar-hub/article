@@ -5,7 +5,7 @@ import { db as prisma } from '@/lib/db';
 
 
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
 
   try {
     

@@ -34,13 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Trash2,
-  Edit,
-  UserPlus,
-} from "lucide-react";
+import { AlertCircle, Trash2, Edit, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 // --- Interfaces ---
@@ -846,7 +840,7 @@ const getRoleBadgeColor = (role: string) => {
 
 // --- Settings Page Component ---
 const SettingsPage = () => {
-  const { data: session, status } = useSession();
+  const { data: _session, status } = useSession();
   const router = useRouter();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);

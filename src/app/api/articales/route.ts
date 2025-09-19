@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db'; // Adjust the import based on your project structure
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const articles = await db.article.findMany({
       where: { status: 'PUBLISHED' },

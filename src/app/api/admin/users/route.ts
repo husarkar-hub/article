@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 
 import { getAuthSession } from '@/lib/auth';
 import {db as prisma} from '@/lib/db';
+import { NotificationService } from '@/lib/notifications';
 
 // Define role constants to match the schema
 const VALID_ROLES: AdminRole[] = ['SUPER_ADMIN', 'EDITOR'];
@@ -85,6 +86,14 @@ export async function POST(req: Request) {
       createdAt: newUser.createdAt.toISOString(),
       updatedAt: newUser.updatedAt.toISOString(),
     };
+
+    // Send notification to other admins about new user
+    try {
+      await NotificationService.notifyUserJoined(email, role);
+    } catch (notificationError) {
+      console.error("Error sending user joined notification:", notificationError);
+      // Don't fail user creation if notification fails
+    }
 
     return NextResponse.json(formattedUser, { status: 201 });
   } catch (error) {
