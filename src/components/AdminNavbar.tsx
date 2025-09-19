@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 import {
   Sheet,
   SheetContent,
@@ -10,7 +10,7 @@ import {
 } from "./ui/sheet";
 import { Menu } from "lucide-react";
 import Link from "next/link";
-import { Button } from './ui/button';
+import { Button } from "./ui/button";
 const AdminNavbar = () => {
   return (
     <Sheet>
@@ -37,6 +37,12 @@ const AdminNavbar = () => {
               Articles
             </Link>
             <Link
+              href="/admin/categories"
+              className="text-primary hover:bg-muted rounded-m p-3"
+            >
+              Categories
+            </Link>
+            <Link
               href="/admin/users"
               className="text-primary hover:bg-muted rounded-m p-3"
             >
@@ -51,13 +57,11 @@ const AdminNavbar = () => {
           </div>
         </SheetDescription>
         <SheetFooter>
-          <Button variant="destructive" >
-            Logout
-          </Button>
+          <Button variant="destructive">Logout</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
   );
-}
+};
 
-export default AdminNavbar
+export default AdminNavbar;

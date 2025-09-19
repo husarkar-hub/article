@@ -11,10 +11,10 @@ import { db } from './db';
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   session: {
-    strategy: 'jwt', // Using JWT for session management
+    strategy: 'jwt', 
   },
   pages: {
-    signIn: '/sign-in', // Custom sign-in page
+    signIn: '/sign-in', 
   },
   secret: process.env.NEXTAUTH_SECRET || 'DEFAULT_SECRET_FOR_DEV', // Use a strong secret in production!
   providers: [

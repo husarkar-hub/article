@@ -6,22 +6,14 @@ export async function GET(req: Request) {
   try {
     const articles = await db.article.findMany({
       where: { status: 'PUBLISHED' },
-      orderBy: { createdAt: 'desc' }, // Consider using publishedAt for ordering public articles
-      select: { // Select fields directly from the Article model
-        id: true,
-        title: true,
-        slug: true,
-        publishedAt: true,
-        isBreakingNews: true, // Map this to 'isBreaking' in frontend
-        views: true,
-        // Use 'include' for relations and specify their fields there
-        author: { // Specify which fields from the related 'author' model to fetch
+      orderBy: { publishedAt: 'desc' }, // Order by publishedAt for better public display
+      include: {
+        author: {
           select: {
-            email: true, // Assuming you want the author's name, not email for public display
-            // If you only had email in author relation, use that: email: true,
+            email: true,
           }
         },
-        category: { // Specify which fields from the related 'category' model to fetch
+        category: {
           select: {
             name: true,
           }
@@ -34,10 +26,10 @@ export async function GET(req: Request) {
       id: article.id,
       title: article.title,
       slug: article.slug,
-      // Safely access author name, fallback if author or author.name is missing
-      author: article.author ? article.author.name || 'Unknown Author' : 'Unknown Author',
+      // Use email prefix as author name since schema doesn't have name field
+      author: article.author ? article.author.email.split('@')[0] : 'Unknown Author',
       publishedAt: article.publishedAt ? new Date(article.publishedAt).toISOString() : null,
-      // Safely access category name, fallback if category or category.name is missing
+      // Safely access category name, fallback if category is missing
       category: article.category ? article.category.name : 'Uncategorized',
       isBreaking: article.isBreakingNews || false, // Map schema field to frontend prop
       views: article.views,

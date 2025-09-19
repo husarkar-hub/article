@@ -13,13 +13,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress"; // If needed for metrics
-import { Search } from "lucide-react";
-import { EyeIcon } from "lucide-react"; // Assuming lucide-react is installed
+import { Search, EyeIcon } from "lucide-react";
 
 // --- Interfaces for Real Data ---
 interface Article {
@@ -46,10 +43,14 @@ const CardFooter = CardContent;
 const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
   const breakingNews = articles
     .filter((article) => article.isBreaking)
-    .sort(
-      (a, b) =>
-        new Date(b.publishedAt!).getTime() - new Date(a.publishedAt!).getTime()
-    );
+    .sort((a, b) => {
+      // Safely handle date comparison with null checks
+      if (!a.publishedAt) return 1;
+      if (!b.publishedAt) return -1;
+      return (
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+    });
 
   return (
     <Card className="shadow-sm">
@@ -71,7 +72,15 @@ const BreakingNewsSidebar = ({ articles }: { articles: Article[] }) => {
                   {article.title}
                 </Link>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(article.publishedAt!).toLocaleString()}
+                  {article.publishedAt
+                    ? new Date(article.publishedAt).toLocaleString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Date unavailable"}
                 </p>
                 {article.category && (
                   <Badge variant="outline" className="mt-1">
@@ -116,7 +125,11 @@ const ArticleCard = ({ article }: { article: Article }) => (
       <CardDescription>
         By {article.author} on{" "}
         {article.publishedAt
-          ? new Date(article.publishedAt).toLocaleDateString()
+          ? new Date(article.publishedAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
           : "N/A"}
         {article.isBreaking && (
           <Badge variant="destructive" className="ml-2">
@@ -186,8 +199,10 @@ const GlobalArticlesPage = () => {
       const data: Article[] = await response.json();
       setAllArticles(data);
       setFilteredArticles(data); // Initialize filtered articles with all fetched articles
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch articles";
+      setError(errorMessage);
       setAllArticles([]);
       setFilteredArticles([]);
     } finally {
@@ -207,8 +222,10 @@ const GlobalArticlesPage = () => {
       }
       const data: Category[] = await response.json();
       setCategories(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch categories";
+      setError(errorMessage);
       setCategories([]); // Clear categories on error
     }
   }, []);
@@ -217,6 +234,9 @@ const GlobalArticlesPage = () => {
   useEffect(() => {
     const trackPageVisit = async () => {
       try {
+        // Only run this code on the client
+        if (typeof window === "undefined") return;
+
         const userAgent = navigator.userAgent;
         if (/bot|crawl|spider|mediapartners/i.test(userAgent)) {
           console.log("Skipping visit tracking for bot.");
@@ -241,8 +261,14 @@ const GlobalArticlesPage = () => {
       }
     };
 
+    // Ensure this only runs on the client
     if (typeof window !== "undefined") {
-      trackPageVisit();
+      // Delay slightly to ensure proper hydration
+      const timer = setTimeout(() => {
+        trackPageVisit();
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -258,10 +284,17 @@ const GlobalArticlesPage = () => {
 
     // Filter by category
     if (selectedCategory !== "all") {
-      currentFiltered = currentFiltered.filter(
-        (article) =>
-          article.category?.toLowerCase() === selectedCategory.toLowerCase()
+      // Find the category name by ID for filtering
+      const selectedCategoryObj = categories.find(
+        (cat) => cat.id === selectedCategory
       );
+      if (selectedCategoryObj) {
+        currentFiltered = currentFiltered.filter(
+          (article) =>
+            article.category?.toLowerCase() ===
+            selectedCategoryObj.name.toLowerCase()
+        );
+      }
     }
 
     // Filter by search term
@@ -275,7 +308,7 @@ const GlobalArticlesPage = () => {
     }
 
     setFilteredArticles(currentFiltered);
-  }, [searchTerm, selectedCategory, allArticles]);
+  }, [searchTerm, selectedCategory, allArticles, categories]);
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);

@@ -4,7 +4,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // For navigation
 
 // Import Shadcn UI components
 import {
@@ -13,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter, // Use CardFooter for actions
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,19 +23,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Search, Edit, Trash2, Eye, RefreshCw } from "lucide-react"; // Add more icons
+import { Search, Edit, Trash2, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // For status dropdown/select
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // For status change
+} from "@/components/ui/select";
 
 // --- Interfaces for Real Data ---
 interface Article {
@@ -113,11 +107,8 @@ const ArticleRow = ({
           }
           disabled={isUpdating}
         >
-          <SelectTrigger
-            
-          >
-            {article.status}{" "}
-            <SelectValue placeholder="Status" />
+          <SelectTrigger>
+            {article.status} <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="PUBLISHED">Published</SelectItem>
@@ -185,7 +176,7 @@ const ArticlesTable = ({
           <TableHead>Published Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Views</TableHead>
-        
+
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -222,8 +213,10 @@ const AdminDashboardPage = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       const data: Article[] = await response.json();
       setArticles(data);
-    } catch (err: any) {
-      setError(`Failed to load articles: ${err.message}`);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load articles";
+      setError(`Failed to load articles: ${errorMessage}`);
       setArticles([]); // Clear articles on error
     } finally {
       setLoadingArticles(false);
@@ -240,8 +233,10 @@ const AdminDashboardPage = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       const data: DashboardMetrics = await response.json();
       setMetrics(data);
-    } catch (err: any) {
-      setError(`Failed to load metrics: ${err.message}`);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load metrics";
+      setError(`Failed to load metrics: ${errorMessage}`);
       setMetrics(null); // Clear metrics on error
     } finally {
       setLoadingMetrics(false);
@@ -278,8 +273,10 @@ const AdminDashboardPage = () => {
 
       // Show success message (e.g., using a toast notification)
       console.log(`Status for article ${id} updated to ${newStatus}`);
-    } catch (error: any) {
-      console.error("Error updating article status:", error);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update status";
+      console.error("Error updating article status:", errorMessage);
       throw error; // Re-throw to be caught by ArticleRow
     }
   };
@@ -290,40 +287,41 @@ const AdminDashboardPage = () => {
     fetchMetrics();
   }, []);
 
-  // --- Function to delete an article (implement API endpoint for this) ---
-  const handleDeleteArticle = async (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this article? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-    try {
-      const response = await fetch(`/api/admin/articles/${id}/delete`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+  // --- Function to delete an article - currently unused ---
+  // const handleDeleteArticle = async (id: string) => {
+  //   if (
+  //     !confirm(
+  //       "Are you sure you want to delete this article? This action cannot be undone."
+  //     )
+  //   ) {
+  //     return;
+  //   }
+  //   try {
+  //     const response = await fetch(`/api/admin/articles/${id}/delete`, {
+  //       method: "DELETE",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            `Failed to delete article (HTTP ${response.status})`
-        );
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(
+  //         errorData.message ||
+  //           `Failed to delete article (HTTP ${response.status})`
+  //       );
+  //     }
 
-      // Re-fetch articles after successful deletion
-      fetchArticles();
-      fetchMetrics(); // Metrics might change (e.g., total count)
-      console.log(`Article ${id} deleted successfully.`);
-    } catch (error: any) {
-      console.error("Error deleting article:", error);
-      setError(`Failed to delete article: ${error.message}`);
-    }
-  };
+  //     // Re-fetch articles after successful deletion
+  //     fetchArticles();
+  //     fetchMetrics(); // Metrics might change (e.g., total count)
+  //     console.log(`Article ${id} deleted successfully.`);
+  //   } catch (error: unknown) {
+  //     const errorMessage = error instanceof Error ? error.message : 'Failed to delete article';
+  //     console.error("Error deleting article:", errorMessage);
+  //     setError(`Failed to delete article: ${errorMessage}`);
+  //   }
+  // };
 
   // --- Right Sidebar Data (Example: Breaking/Top Rated) ---
   const breakingNewsArticles = articles
@@ -337,14 +335,7 @@ const AdminDashboardPage = () => {
   const topRatedArticles = articles
     .filter((article) => article.isTopRated && article.status === "Published")
     .sort((a, b) => b.views - a.views)
-    .slice(0, 3); // Get top 3 top-rated
-
-  // --- Live Activity Link ---
-  const handleViewActivityLog = () => {
-    // Navigate to your logs page
-    console.log("Navigating to activity log...");
-    // router.push('/admin/logs'); // Uncomment and use router if needed
-  };
+    .slice(0, 3);
 
   return (
     <div className="container mx-auto py-8">
@@ -521,11 +512,7 @@ const AdminDashboardPage = () => {
                 See detailed user activity logs.
               </p>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/admin/logs">
-                  {" "}
-                  {/* Link to your logs page */}
-                  View Live Activity Log
-                </Link>
+                <Link href="/admin/logs">View Live Activity Log</Link>
               </Button>
             </CardContent>
           </Card>

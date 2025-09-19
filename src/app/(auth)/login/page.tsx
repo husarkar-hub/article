@@ -111,7 +111,7 @@ const LoginPage = () => {
         </CardContent>
         <CardFooter className="flex justify-center text-sm text-gray-500">
           <p>
-            Don't have an account?`&apos;`
+            Don&apos;t have an account?{" "}
             <Link href="/sign-up" className="text-blue-500 hover:underline">
               Sign up
             </Link>
