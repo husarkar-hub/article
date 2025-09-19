@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { getServerSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-
+import bcrypt from 'bcryptjs';
 
 import { db } from './db';
 
@@ -14,7 +14,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt', 
   },
   pages: {
-    signIn: '/sign-in', 
+    signIn: '/login', 
   },
   secret: process.env.NEXTAUTH_SECRET || 'DEFAULT_SECRET_FOR_DEV', // Use a strong secret in production!
   providers: [
@@ -26,42 +26,44 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials || !credentials.email || !credentials.password) {
-          // Return null for invalid credentials. NextAuth handles the error message.
+          console.log('Missing credentials');
           return null;
         }
 
         const { email, password } = credentials;
 
-       
-        const user = await db.user.findUnique({
-          where: { email: email as string },
-          
-        });
-       
-       
-        if (!user || !user.hashedPassword) {
+        try {
+          const user = await db.user.findUnique({
+            where: { email: email as string },
+          });
+         
+          if (!user || !user.hashedPassword) {
+            console.log('User not found or no password set:', email);
+            return null;
+          }
+
+          // Verify password using bcrypt
+          const isPasswordValid = await bcrypt.compare(password, user.hashedPassword);
+         
+          if (!isPasswordValid) {
+            console.log('Invalid password for user:', email);
+            return null;
+          }
+
+          console.log('User authenticated successfully:', email);
+
+          // IMPORTANT: Return only necessary data for the JWT.
+          // Do NOT return hashedPassword. PrismaAdapter will map this to the User object.
+          // Ensure all returned properties match what your next-auth.d.ts expects in JWT/Session.
+          return {
+            id: user.id,
+            email: user.email,
+            role: user.role, // This should be the string representation of your enum
+          };
+        } catch (error) {
+          console.error('Error during authentication:', error);
           return null;
         }
-
-        const matchpasword:boolean=password===user.hashedPassword
-       
-        if(  matchpasword===false ){
-
-            return null;
-        }
-
-       
-
-        // IMPORTANT: Return only necessary data for the JWT.
-        // Do NOT return hashedPassword. PrismaAdapter will map this to the User object.
-        // Ensure all returned properties match what your next-auth.d.ts expects in JWT/Session.
-        return {
-          id: user.id,
-          email: user.email,
-          // Generate username if missing
-          role: user.role, // This should be the string representation of your enum
-
-        };
       },
     }),
     // Add other providers like GoogleProvider, GitHubProvider here if needed

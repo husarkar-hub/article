@@ -28,19 +28,20 @@ export async function GET() {
       orderBy: {
         createdAt: 'desc', 
       },
-      // You might want to select specific fields if your Article model is very large
-      // select: {
-      //   id: true,
-      //   title: true,
-      //   slug: true,
-      //   author: { select: { name: true } }, // Example if you have an Author relation
-      //   publishedAt: true,
-      //   status: true,
-      //   views: true,
-      //   comments: true,
-      //   isBreaking: true,
-      //   isTopRated: true,
-      // }
+      include: {
+        author: {
+          select: {
+            email: true,
+            id: true
+          }
+        },
+        category: {
+          select: {
+            name: true,
+            id: true
+          }
+        }
+      }
     });
     return NextResponse.json(articles, { status: 200 });
   } catch (error) {

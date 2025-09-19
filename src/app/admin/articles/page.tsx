@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 // Import UI components
 import {
@@ -169,6 +170,9 @@ export const CreateArticleForm = () => {
     if (!finalSlug) validationErrors.push("A valid slug is required.");
 
     if (validationErrors.length > 0) {
+      toast.error("Validation Error", {
+        description: validationErrors.join(" "),
+      });
       return;
     }
 
@@ -186,6 +190,9 @@ export const CreateArticleForm = () => {
 
     console.log("Submitting article data:", articleData);
 
+    // Show loading toast
+    const loadingToast = toast.loading("Creating article...");
+
     try {
       // --- API Call ---
       const response = await fetch("/api/admin/registerArtical", {
@@ -200,11 +207,20 @@ export const CreateArticleForm = () => {
 
       if (!response.ok) {
         console.error("API Error:", response.status, result);
+        toast.dismiss(loadingToast);
+        toast.error("Failed to create article", {
+          description: result.message || `Error: ${response.status}`,
+        });
         throw new Error(
           result.message ||
             `Failed to create article (Status: ${response.status})`
         );
       }
+
+      toast.dismiss(loadingToast);
+      toast.success("Article created successfully!", {
+        description: `"${title}" has been published to your site.`,
+      });
 
       // Redirect to the articles list page
       router.push("/admin");
@@ -212,6 +228,11 @@ export const CreateArticleForm = () => {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to create article";
       console.error("Error submitting article:", errorMessage);
+
+      toast.dismiss(loadingToast);
+      toast.error("Creation failed", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -423,13 +444,21 @@ const ArticlesPage = () => {
   const fetchArticles = async () => {
     try {
       const response = await fetch("/api/admin/articles");
-      if (!response.ok) throw new Error("Failed to fetch articles");
+      if (!response.ok) {
+        toast.error("Failed to load articles", {
+          description: "Unable to retrieve articles from the server.",
+        });
+        throw new Error("Failed to fetch articles");
+      }
       const data = await response.json();
       setArticles(data);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching articles:", error);
       setLoading(false);
+      toast.error("Loading failed", {
+        description: "Could not load articles. Please refresh the page.",
+      });
     }
   };
 

@@ -1,58 +1,66 @@
+"use client";
 
-// "use client"; // Required if using hooks like useSession
+import React, { useState } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { LogOut, Loader2 } from "lucide-react";
 
-// import React from "react";
-// import { signOut, useSession } from "next-auth/react"; // Import signOut and useSession
-// import { Button } from "@/components/ui/button"; // Your Shadcn UI Button component
+interface LogoutButtonProps {
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  size?: "default" | "sm" | "lg" | "icon";
+  className?: string;
+  showIcon?: boolean;
+}
 
-// // Optional: If you want to display the button only when a user is logged in
-// // import { useRouter } from "next/navigation"; // If you need to redirect after logout
+const Logout: React.FC<LogoutButtonProps> = ({
+  variant = "destructive",
+  size = "default",
+  className = "",
+  showIcon = true,
+}) => {
+  const { data: session, status } = useSession();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-// interface LogoutButtonProps {
-//   // You can add props here if needed, e.g., to customize appearance
-// }
+  // Don't show the button if not authenticated
+  if (status === "loading" || !session) {
+    return null;
+  }
 
-// const Logout: React.FC<LogoutButtonProps> = () => {
-//   // const router = useRouter(); // Uncomment if you need to redirect after logout
-//   // const { data: session, status } = useSession(); // Get session data and status
+  const handleLogout = async () => {
+    try {
+      setIsSigningOut(true);
+      await signOut({
+        redirect: true,
+        callbackUrl: "/login",
+      });
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setIsSigningOut(false);
+    }
+  };
 
-//   // // Show loading indicator or nothing if status is 'loading' or session is null
-//   // if (status === "loading" || !session) {
-//   //   return null; // Or return a loading spinner component
-//   // }
+  return (
+    <Button
+      variant={variant}
+      size={size}
+      className={className}
+      onClick={handleLogout}
+      disabled={isSigningOut}
+    >
+      {isSigningOut ? (
+        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      ) : (
+        showIcon && <LogOut className="h-4 w-4 mr-2" />
+      )}
+      {isSigningOut ? "Signing out..." : "Logout"}
+    </Button>
+  );
+};
 
-//   const handleLogout = async () => {
-//     try {
-//       // Call signOut.
-//       // The 'redirect: true' option (default) will redirect to the callbackUrl
-//       // specified in signOut options or the default signOut page.
-//       // Set 'redirect: false' if you want to handle redirection manually.
-//       await signOut({
-//         redirect: true, // Default is true, redirects to default signout page or callbackUrl
-//         // callbackUrl: '/sign-in' // Optional: Specify where to redirect after logout
-//       });
-//       // If redirect is false:
-//       // console.log("Successfully signed out.");
-//       // router.push('/sign-in'); // Redirect manually if redirect option is false
-//     } catch (error) {
-//       console.error("Error signing out:", error);
-//       // Handle error, e.g., show a toast message
-//     }
-//   };
-
-//   return (
-//     // This button will only be rendered if the session exists (and status is 'authenticated')
-//     // if using the useSession check above. Otherwise, it will always be visible.
-//     <Button
-//       variant="destructive"
-//       className="w-full mt-4"
-//       onClick={handleLogout}
-//       // Optionally disable while signing out if not redirecting immediately
-//       // disabled={isSigningOut}
-//     >
-//       Logout
-//     </Button>
-//   );
-// };
-
-// export default Logout;
+export default Logout;
