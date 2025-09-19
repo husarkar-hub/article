@@ -1,14 +1,4 @@
-<<<<<<< HEAD
-import React from 'react'
 
-const page = ({params}: {params: {slug: string}}) => {
-  return (
-    <div>Article: {params.slug}</div>
-  )
-}
-
-export default page
-=======
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -332,7 +322,7 @@ export default function ArticlePage() {
             <div className="max-w-4xl mx-auto">
               <div className="relative aspect-video rounded-lg overflow-hidden mb-8">
                 <Image
-                  src={article.featuredImageUrl}
+                  src={article.featuredImageUrl || "/placeholder.png"}
                   alt={article.title}
                   fill
                   className="object-cover"
@@ -398,4 +388,4 @@ export default function ArticlePage() {
     </div>
   );
 }
->>>>>>> developer
+
