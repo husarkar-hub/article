@@ -109,11 +109,7 @@ export async function POST(request: Request) {
   // Ensure categories is an array of strings (IDs)
   const categoryIds = Array.isArray(categories) ? categories : [];
 
-  // Filter out invalid category IDs if necessary, or create new ones if allowed
-  // For simplicity, we assume the IDs provided are valid existing Category IDs.
-  // A more robust approach would query the Category table first.
 
-  // 6. Create Article in Database
   console.log("Creating article with slug:", session.user.id, generatedSlug);
   try {
     

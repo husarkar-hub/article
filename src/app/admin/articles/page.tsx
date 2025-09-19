@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // Import icons
-import { MoreVertical, Edit, Trash2, Plus, Search } from "lucide-react";
+import { MoreVertical, Edit, Plus, Search } from "lucide-react";
 
 import Link from "next/link";
 
@@ -45,6 +45,9 @@ import Link from "next/link";
 interface Category {
   id: string;
   name: string;
+  _count?: {
+    articles: number;
+  };
 }
 
 interface Article {
@@ -65,26 +68,10 @@ interface Article {
   featuredImageUrl?: string;
 }
 
-interface CreatedArticle {
-  id: string;
-  title: string;
-  slug: string;
-  // ... other fields returned by the API
-}
-
-// --- Dummy Data ---
-const dummyCategories: Category[] = [
-  { id: "cat-1", name: "Technology" },
-  { id: "cat-2", name: "Politics" },
-  { id: "cat-3", name: "Sports" },
-  { id: "cat-4", name: "Entertainment" },
-  { id: "cat-5", name: "Health" },
-];
-
 // --- Article Creation Form Component ---
 export const CreateArticleForm = () => {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   // --- Form State ---
   const [title, setTitle] = useState("");
@@ -95,6 +82,32 @@ export const CreateArticleForm = () => {
   const [isTopRated, setIsTopRated] = useState(false);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
   const [authorId, setAuthorId] = useState<string | null>(null);
+
+  // --- Categories State ---
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Fetch categories on component mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await fetch("/api/categories");
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data);
+        } else {
+          console.error("Failed to fetch categories");
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Set authorId from session when available
   useEffect(() => {
@@ -195,8 +208,10 @@ export const CreateArticleForm = () => {
 
       // Redirect to the articles list page
       router.push("/admin");
-    } catch (error: any) {
-      console.error("Error submitting article:", error);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create article";
+      console.error("Error submitting article:", errorMessage);
     }
   };
 
@@ -290,22 +305,47 @@ export const CreateArticleForm = () => {
 
           {/* Categories Selection */}
           <div>
-            <Label>Categories</Label>
-            <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {dummyCategories.map((cat) => (
-                <div key={cat.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={cat.id}
-                    checked={selectedCategories.includes(cat.id)}
-                    onCheckedChange={() => handleCategoryToggle(cat.id)}
-                  />
-                  <Label htmlFor={cat.id} className="font-normal">
-                    {cat.name}
-                  </Label>
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <Label>Categories</Label>
+              <Link
+                href="/admin/categories"
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Manage Categories
+              </Link>
             </div>
-            {selectedCategories.length === 0 && (
+            {categoriesLoading ? (
+              <div className="mt-1 p-4 text-center text-muted-foreground">
+                Loading categories...
+              </div>
+            ) : categories.length === 0 ? (
+              <div className="mt-1 p-4 text-center text-muted-foreground">
+                No categories available.{" "}
+                <Link
+                  href="/admin/categories"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  Create categories first
+                </Link>
+                .
+              </div>
+            ) : (
+              <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {categories.map((cat) => (
+                  <div key={cat.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={cat.id}
+                      checked={selectedCategories.includes(cat.id)}
+                      onCheckedChange={() => handleCategoryToggle(cat.id)}
+                    />
+                    <Label htmlFor={cat.id} className="font-normal">
+                      {cat.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedCategories.length === 0 && !categoriesLoading && (
               <p className="text-xs text-muted-foreground mt-1">
                 Select categories (optional).
               </p>
@@ -347,7 +387,6 @@ export const CreateArticleForm = () => {
 // Articles Page Component
 const ArticlesPage = () => {
   const router = useRouter();
-  const { data: session } = useSession();
   const [articles, setArticles] = useState<Article[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -394,45 +433,40 @@ const ArticlesPage = () => {
     }
   };
 
-  // Delete article
-  const handleDelete = async (id: string) => {
-    // Use window.confirm only on client side
-    if (typeof window !== "undefined") {
-      if (!window.confirm("Are you sure you want to delete this article?"))
-        return;
-    }
+  // Delete article - not currently used in UI
+  // const handleDelete = async (id: string) => {
+  //   if (typeof window !== "undefined") {
+  //     if (!window.confirm("Are you sure you want to delete this article?"))
+  //       return;
+  //   }
 
-    try {
-      const response = await fetch(`/api/admin/articles/${id}/delete`, {
-        method: "DELETE",
-      });
+  //   try {
+  //     const response = await fetch(`/api/admin/articles/${id}/delete`, {
+  //       method: "DELETE",
+  //     });
 
-      if (!response.ok) throw new Error("Failed to delete article");
+  //     if (!response.ok) throw new Error("Failed to delete article");
+  //     fetchArticles();
+  //   } catch (error) {
+  //     console.error("Error deleting article:", error);
+  //   }
+  // };
 
-      // Refresh articles list
-      fetchArticles();
-    } catch (error) {
-      console.error("Error deleting article:", error);
-    }
-  };
+  // Change article status - not currently used in UI
+  // const handleStatusChange = async (id: string, newStatus: string) => {
+  //   try {
+  //     const response = await fetch(`/api/admin/articles/${id}/status`, {
+  //       method: "PUT",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ status: newStatus }),
+  //     });
 
-  // Change article status
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/admin/articles/${id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!response.ok) throw new Error("Failed to update article status");
-
-      // Refresh articles list
-      fetchArticles();
-    } catch (error) {
-      console.error("Error updating article status:", error);
-    }
-  };
+  //     if (!response.ok) throw new Error("Failed to update article status");
+  //     fetchArticles();
+  //   } catch (error) {
+  //     console.error("Error updating article status:", error);
+  //   }
+  // };
 
   // Filter articles based on search term
   const filteredArticles = React.useMemo(() => {
@@ -560,12 +594,13 @@ const ArticlesPage = () => {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem
+                          {/* Delete functionality temporarily disabled */}
+                          {/* <DropdownMenuItem
                             onClick={() => handleDelete(article.id)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -13,13 +13,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress"; // If needed for metrics
-import { Search } from "lucide-react";
-import { EyeIcon } from "lucide-react"; // Assuming lucide-react is installed
+import { Search, EyeIcon } from "lucide-react";
 
 // --- Interfaces for Real Data ---
 interface Article {
@@ -202,8 +199,10 @@ const GlobalArticlesPage = () => {
       const data: Article[] = await response.json();
       setAllArticles(data);
       setFilteredArticles(data); // Initialize filtered articles with all fetched articles
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch articles";
+      setError(errorMessage);
       setAllArticles([]);
       setFilteredArticles([]);
     } finally {
@@ -223,8 +222,10 @@ const GlobalArticlesPage = () => {
       }
       const data: Category[] = await response.json();
       setCategories(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch categories";
+      setError(errorMessage);
       setCategories([]); // Clear categories on error
     }
   }, []);
@@ -283,10 +284,17 @@ const GlobalArticlesPage = () => {
 
     // Filter by category
     if (selectedCategory !== "all") {
-      currentFiltered = currentFiltered.filter(
-        (article) =>
-          article.category?.toLowerCase() === selectedCategory.toLowerCase()
+      // Find the category name by ID for filtering
+      const selectedCategoryObj = categories.find(
+        (cat) => cat.id === selectedCategory
       );
+      if (selectedCategoryObj) {
+        currentFiltered = currentFiltered.filter(
+          (article) =>
+            article.category?.toLowerCase() ===
+            selectedCategoryObj.name.toLowerCase()
+        );
+      }
     }
 
     // Filter by search term
@@ -300,7 +308,7 @@ const GlobalArticlesPage = () => {
     }
 
     setFilteredArticles(currentFiltered);
-  }, [searchTerm, selectedCategory, allArticles]);
+  }, [searchTerm, selectedCategory, allArticles, categories]);
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
