@@ -39,7 +39,6 @@ const Editor: React.FC<EditorProps> = ({
       const Quote = (await import("@editorjs/quote")).default;
       const Code = (await import("@editorjs/code")).default;
       const InlineCode = (await import("@editorjs/inline-code")).default;
-      const Marker = (await import("@editorjs/marker")).default;
       const Delimiter = (await import("@editorjs/delimiter")).default;
       const Table = (await import("@editorjs/table")).default;
       const Image = (await import("@editorjs/image")).default;
@@ -49,7 +48,7 @@ const Editor: React.FC<EditorProps> = ({
         placeholder,
         tools: {
           header: {
-            class: Header,
+            class: Header as any,
             config: {
               placeholder: "Enter a header",
               levels: [1, 2, 3, 4, 5, 6],
@@ -57,21 +56,21 @@ const Editor: React.FC<EditorProps> = ({
             },
           },
           paragraph: {
-            class: Paragraph,
+            class: Paragraph as any,
             inlineToolbar: true,
             config: {
               placeholder: "Tell your story...",
             },
           },
           list: {
-            class: List,
+            class: List as any,
             inlineToolbar: true,
             config: {
               defaultStyle: "unordered",
             },
           },
           quote: {
-            class: Quote,
+            class: Quote as any,
             inlineToolbar: true,
             config: {
               quotePlaceholder: "Enter a quote",
@@ -79,22 +78,18 @@ const Editor: React.FC<EditorProps> = ({
             },
           },
           code: {
-            class: Code,
+            class: Code as any,
             config: {
               placeholder: "Enter code here...",
             },
           },
           inlineCode: {
-            class: InlineCode,
+            class: InlineCode as any,
             shortcut: "CMD+SHIFT+M",
           },
-          marker: {
-            class: Marker,
-            shortcut: "CMD+SHIFT+H",
-          },
-          delimiter: Delimiter,
+          delimiter: Delimiter as any,
           table: {
-            class: Table,
+            class: Table as any,
             inlineToolbar: true,
             config: {
               rows: 2,
@@ -102,7 +97,7 @@ const Editor: React.FC<EditorProps> = ({
             },
           },
           image: {
-            class: Image,
+            class: Image as any,
             config: {
               endpoints: {
                 byFile: "/api/upload", // Cloudinary upload endpoint
