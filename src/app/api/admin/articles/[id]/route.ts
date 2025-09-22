@@ -87,6 +87,7 @@ export async function PUT(req: Request) {
       title,
       slug,
       content,
+      editorData, // Editor.js structured data
       status,
       isBreakingNews,
       isTopRated,
@@ -135,6 +136,7 @@ export async function PUT(req: Request) {
         title,
         slug,
         content,
+        editorData, // Store Editor.js JSON data
         status: status || undefined,
         isBreakingNews: isBreakingNews !== undefined ? isBreakingNews : undefined,
         isTopRated: isTopRated !== undefined ? isTopRated : undefined,

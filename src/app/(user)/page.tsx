@@ -1,8 +1,8 @@
-// app/articles/page.tsx (or wherever your GlobalArticlesPage is located)
+// app/(user)/page.tsx - SEO Optimized Home Page
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react"; // Import useCallback
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
 // Import Shadcn UI components
@@ -389,8 +389,17 @@ const GlobalArticlesPage = () => {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">Articles</h1>
+    <div className="container mx-auto py-8 lg:px-4">
+      <header className="mb-8">
+        <h1 className="text-4xl font-bold mb-3 text-primary">
+          Latest News & Articles
+        </h1>
+        <p className="text-lg text-muted-foreground max-w-3xl">
+          Discover breaking news, trending stories, and expert analysis. Stay
+          informed with our comprehensive coverage of current events and
+          in-depth articles.
+        </p>
+      </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
         {/* Sidebar for Breaking News and Top Rated */}
@@ -419,7 +428,7 @@ const GlobalArticlesPage = () => {
             <Tabs
               value={selectedCategory}
               onValueChange={(value) => handleCategoryChange(value)}
-              className="w-full md:w-auto overflow-x-scroll"
+              className="w-full md:w-auto overflow-x-scroll scrollbar-0"
             >
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>{" "}

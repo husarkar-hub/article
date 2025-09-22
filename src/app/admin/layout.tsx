@@ -1,13 +1,56 @@
 "use client";
 
 import AdminNavbar from "@/components/AdminNavbar";
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import NextAuthSessionProvider from "@/components/NextAuthSessionProvider";
 import { NotificationProvider } from "@/components/notifications/NotificationProvider";
 import CurrentDateTime from "@/components/healperComp/CurrentDateTime";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Cloud, Wifi, Clock } from "lucide-react";
+
+// SEO Component for Admin Pages
+const AdminSEOHead = () => {
+  useEffect(() => {
+    // Set dynamic title for admin pages
+    document.title = "Admin Dashboard - Content Management System";
+
+    // Update meta description
+    let metaDescription = document.querySelector('meta[name="description"]');
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+    metaDescription.setAttribute(
+      "content",
+      "Secure admin dashboard for content management, article publishing, user management, and analytics. Professional CMS interface."
+    );
+
+    // Add robots meta for admin pages (prevent indexing)
+    let robotsMeta = document.querySelector('meta[name="robots"]');
+    if (!robotsMeta) {
+      robotsMeta = document.createElement("meta");
+      robotsMeta.setAttribute("name", "robots");
+      document.head.appendChild(robotsMeta);
+    }
+    robotsMeta.setAttribute("content", "noindex, nofollow");
+
+    // Add viewport meta if not exists
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement("meta");
+      viewportMeta.setAttribute("name", "viewport");
+      viewportMeta.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1"
+      );
+      document.head.appendChild(viewportMeta);
+    }
+  }, []);
+
+  return null;
+};
 
 const WeatherDisplay = () => {
   const weatherData = {
@@ -48,6 +91,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <NextAuthSessionProvider>
       <NotificationProvider>
+        <AdminSEOHead />
         <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
           {/* Header */}
           <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

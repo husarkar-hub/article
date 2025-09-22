@@ -36,6 +36,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Editor from "@/components/ui/editor";
+import {
+  convertEditorJSToHTML,
+  getPlainTextFromEditorJS,
+} from "@/lib/editorjs-html";
+import { OutputData } from "@editorjs/editorjs";
 
 // Import icons
 import { MoreVertical, Edit, Plus, Search } from "lucide-react";
@@ -78,6 +84,7 @@ export const CreateArticleForm = () => {
   const [title, setTitle] = useState("");
   const [slugInput, setSlugInput] = useState(""); // State for the raw slug input
   const [content, setContent] = useState("");
+  const [editorData, setEditorData] = useState<OutputData>({ blocks: [] });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isBreakingNews, setIsBreakingNews] = useState(false);
   const [isTopRated, setIsTopRated] = useState(false);
@@ -119,8 +126,12 @@ export const CreateArticleForm = () => {
 
   // --- Derived State for Slug ---
   // Calculate the final slug based on title and slugInput
-  const generateSlug = (text: string): string => {
-    return text
+  const generateSlug = (text: string | any): string => {
+    // Ensure we have a string to work with
+    const stringText = typeof text === "string" ? text : String(text || "");
+    console.log("Generating slug from:", stringText); // Debug log
+
+    return stringText
       .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/[^\w-]+/g, "")
@@ -132,15 +143,34 @@ export const CreateArticleForm = () => {
   const derivedSlug = slugInput.trim() || generateSlug(title.trim());
 
   // --- Event Handlers ---
+  // Handle Editor.js data changes
+  const handleEditorChange = (data: OutputData) => {
+    console.log("Editor data received:", data); // Debug log
+    setEditorData(data);
+
+    // Update the plain content state for backward compatibility
+    try {
+      const plainText = getPlainTextFromEditorJS(data);
+      console.log("Plain text extracted:", plainText); // Debug log
+      setContent(plainText);
+    } catch (error) {
+      console.error("Error extracting plain text from editor data:", error);
+      setContent(""); // Fallback to empty string
+    }
+  };
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
+    console.log("Title changed to:", newTitle); // Debug log
     setTitle(newTitle);
     // Auto-generate slug if the slug input is empty or matches the previously generated slug from title
     if (
       !slugInput.trim() ||
       generateSlug(slugInput.trim()) === generateSlug(title.trim())
     ) {
-      setSlugInput(generateSlug(newTitle));
+      const newSlug = generateSlug(newTitle);
+      console.log("Generated slug:", newSlug); // Debug log
+      setSlugInput(newSlug);
     }
   };
 
@@ -163,7 +193,15 @@ export const CreateArticleForm = () => {
     // --- Client-side Validation ---
     const validationErrors: string[] = [];
     if (!title.trim()) validationErrors.push("Article title is required.");
-    if (!content.trim()) validationErrors.push("Article content is required.");
+
+    // Convert editor data to HTML for content validation
+    const htmlContent = convertEditorJSToHTML(editorData);
+    const plainTextContent = getPlainTextFromEditorJS(editorData);
+
+    if (!plainTextContent.trim()) {
+      validationErrors.push("Article content is required.");
+    }
+
     if (!authorId) validationErrors.push("Author information is missing.");
     // Use the derivedSlug for validation
     const finalSlug = derivedSlug; // Use the calculated slug
@@ -180,7 +218,8 @@ export const CreateArticleForm = () => {
     const articleData = {
       title: title.trim(),
       slug: finalSlug, // Use the validated and sanitized slug
-      content: content.trim(),
+      content: htmlContent, // Use converted HTML content
+      editorData: JSON.stringify(editorData), // Store raw editor data for editing
       categories: selectedCategories,
       isBreakingNews,
       isTopRated,
@@ -298,30 +337,112 @@ export const CreateArticleForm = () => {
           {/* Content */}
           <div>
             <Label htmlFor="content">Article Content</Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setContent(e.target.value)
-              }
-              placeholder="Write your article here..."
-              rows={15}
-              required
-              className="mt-1 min-h-[300px]"
-            />
+            <div className="mt-1">
+              <Editor
+                value={editorData}
+                onChange={handleEditorChange}
+                placeholder="Start writing your article with rich formatting..."
+                className="min-h-[400px]"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Use the toolbar to format your content with headers, lists,
+              quotes, code blocks, and more.
+            </p>
           </div>
 
-          {/* Featured Image URL */}
+          {/* Featured Image Upload */}
           <div>
-            <Label htmlFor="featuredImageUrl">Featured Image URL</Label>
-            <Input
-              id="featuredImageUrl"
-              type="url"
-              value={featuredImageUrl}
-              onChange={(e) => setFeaturedImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              className="mt-1"
-            />
+            <Label htmlFor="featuredImage">Featured Image</Label>
+            <div className="mt-1 space-y-3">
+              {/* File Upload Input */}
+              <div className="flex items-center space-x-3">
+                <Input
+                  id="featuredImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    // Show loading state
+                    const loadingToast = toast.loading("Uploading image...");
+
+                    try {
+                      const formData = new FormData();
+                      formData.append("image", file);
+
+                      const response = await fetch("/api/upload", {
+                        method: "POST",
+                        body: formData,
+                      });
+
+                      const result = await response.json();
+
+                      if (result.success) {
+                        setFeaturedImageUrl(result.file.url);
+                        toast.dismiss(loadingToast);
+                        toast.success("Image uploaded successfully!");
+                      } else {
+                        throw new Error(result.message || "Upload failed");
+                      }
+                    } catch (error) {
+                      toast.dismiss(loadingToast);
+                      toast.error("Upload failed", {
+                        description: "Please try again with a different image.",
+                      });
+                      console.error("Featured image upload error:", error);
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const input = document.getElementById(
+                      "featuredImage"
+                    ) as HTMLInputElement;
+                    input?.click();
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Choose File
+                </Button>
+              </div>
+
+              {/* URL Input as Alternative */}
+              <div className="text-sm text-muted-foreground">
+                Or enter an image URL directly:
+              </div>
+              <Input
+                type="url"
+                value={featuredImageUrl}
+                onChange={(e) => setFeaturedImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                className="text-sm"
+              />
+
+              {/* Image Preview */}
+              {featuredImageUrl && (
+                <div className="relative">
+                  <img
+                    src={featuredImageUrl}
+                    alt="Featured image preview"
+                    className="w-full max-w-md h-48 object-cover rounded-md border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setFeaturedImageUrl("")}
+                    className="absolute top-2 right-2"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Categories Selection */}

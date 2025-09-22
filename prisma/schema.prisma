@@ -73,9 +73,10 @@ model Article {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  title   String
-  slug    String @unique
-  content String
+  title      String
+  slug       String  @unique
+  content    String
+  editorData String? // Store Editor.js JSON data
 
   status ArticleStatus @default(DRAFT)
 

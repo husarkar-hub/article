@@ -53,6 +53,7 @@ export async function POST(request: Request) {
     title,
     slug,
     content,
+    editorData, // Editor.js structured data
     categories, // Assuming this is an array of category IDs (strings)
     isBreakingNews,
     isTopRated,
@@ -118,6 +119,7 @@ export async function POST(request: Request) {
         title,
         slug: generatedSlug,
         content,
+        editorData, // Store Editor.js JSON data
         status: ArticleStatus.DRAFT, // Default status
         isBreakingNews: !!isBreakingNews,
         isTopRated: !!isTopRated,

@@ -19,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import Editor from "@/components/ui/editor";
+import {
+  convertEditorJSToHTML,
+  convertHTMLToEditorJS,
+  getPlainTextFromEditorJS,
+} from "@/lib/editorjs-html";
+import { OutputData } from "@editorjs/editorjs";
 
 // --- Data Types ---
 interface Category {
@@ -66,6 +73,7 @@ const EditArticlePage = () => {
   const [title, setTitle] = useState("");
   const [slugInput, setSlugInput] = useState("");
   const [content, setContent] = useState("");
+  const [editorData, setEditorData] = useState<OutputData>({ blocks: [] });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isBreakingNews, setIsBreakingNews] = useState(false);
   const [isTopRated, setIsTopRated] = useState(false);
@@ -96,6 +104,24 @@ const EditArticlePage = () => {
         setTitle(data.title || "");
         setSlugInput(data.slug || "");
         setContent(data.content || "");
+
+        // Handle editor data - try to parse stored editor data or convert from HTML
+        if (data.editorData) {
+          try {
+            const parsedEditorData = JSON.parse(data.editorData);
+            setEditorData(parsedEditorData);
+          } catch (error) {
+            console.warn(
+              "Failed to parse editor data, converting from HTML:",
+              error
+            );
+            setEditorData(convertHTMLToEditorJS(data.content || ""));
+          }
+        } else {
+          // Convert existing HTML content to Editor.js format
+          setEditorData(convertHTMLToEditorJS(data.content || ""));
+        }
+
         setIsBreakingNews(!!data.isBreakingNews);
         setIsTopRated(!!data.isTopRated);
         setFeaturedImageUrl(data.featuredImageUrl || "");
@@ -136,6 +162,14 @@ const EditArticlePage = () => {
   const derivedSlug = slugInput.trim() || generateSlug(title.trim());
 
   // --- Event Handlers ---
+  // Handle Editor.js data changes
+  const handleEditorChange = (data: OutputData) => {
+    setEditorData(data);
+    // Update the plain content state for backward compatibility
+    const plainText = getPlainTextFromEditorJS(data);
+    setContent(plainText);
+  };
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
@@ -176,10 +210,16 @@ const EditArticlePage = () => {
       setError("Article title is required.");
       return;
     }
-    if (!content.trim()) {
+
+    // Convert editor data to HTML for content validation
+    const htmlContent = convertEditorJSToHTML(editorData);
+    const plainTextContent = getPlainTextFromEditorJS(editorData);
+
+    if (!plainTextContent.trim()) {
       setError("Article content is required.");
       return;
     }
+
     if (!derivedSlug) {
       setError("A valid slug is required.");
       return;
@@ -190,7 +230,8 @@ const EditArticlePage = () => {
       id: articleId,
       title: title.trim(),
       slug: derivedSlug,
-      content: content.trim(),
+      content: htmlContent, // Use converted HTML content
+      editorData: JSON.stringify(editorData), // Store raw editor data for editing
       categories: selectedCategories,
       isBreakingNews,
       isTopRated,
@@ -301,17 +342,18 @@ const EditArticlePage = () => {
           {/* Content */}
           <div>
             <Label htmlFor="content">Article Content</Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                setContent(e.target.value)
-              }
-              placeholder="Write your article here..."
-              rows={15}
-              required
-              className="mt-1 min-h-[300px]"
-            />
+            <div className="mt-1">
+              <Editor
+                value={editorData}
+                onChange={handleEditorChange}
+                placeholder="Start writing your article with rich formatting..."
+                className="min-h-[400px]"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Use the toolbar to format your content with headers, lists,
+              quotes, code blocks, and more.
+            </p>
           </div>
 
           {/* Status */}

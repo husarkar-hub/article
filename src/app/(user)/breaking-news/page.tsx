@@ -1,9 +1,68 @@
-// app/(user)/breaking-news/page.tsx
+// app/(user)/breaking-news/page.tsx - SEO Optimized Breaking News Page
 
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+
+// SEO Component for dynamic title updates
+const SEOHead = ({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) => {
+  useEffect(() => {
+    document.title = title;
+
+    // Update meta description
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute("content", description);
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "description";
+      meta.content = description;
+      document.head.appendChild(meta);
+    }
+
+    // Update canonical URL
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      canonical.setAttribute("href", window.location.href);
+    } else {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      canonical.setAttribute("href", window.location.href);
+      document.head.appendChild(canonical);
+    }
+
+    // Add structured data for news articles
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "NewsMediaOrganization",
+      name: "NewsHub",
+      url: window.location.origin,
+      logo: `${window.location.origin}/logo.png`,
+      sameAs: ["https://twitter.com/newshub", "https://facebook.com/newshub"],
+    };
+
+    let script = document.querySelector(
+      'script[type="application/ld+json"]'
+    ) as HTMLScriptElement;
+    if (script) {
+      script.textContent = JSON.stringify(structuredData);
+    } else {
+      script = document.createElement("script") as HTMLScriptElement;
+      script.type = "application/ld+json";
+      script.textContent = JSON.stringify(structuredData);
+      document.head.appendChild(script);
+    }
+  }, [title, description]);
+
+  return null;
+};
 
 // Import Shadcn UI components
 import {
@@ -220,78 +279,93 @@ const BreakingNewsPage = () => {
     }
   }, [searchTerm, allArticles]);
 
+  // SEO Dynamic Data
+  const pageTitle = `Breaking News - Latest Updates ${
+    filteredArticles.length > 0 ? `(${filteredArticles.length} stories)` : ""
+  } | NewsHub`;
+  const pageDescription = `Stay informed with ${filteredArticles.length} breaking news stories. Get real-time updates on current events, urgent developments, and important news as it happens.`;
+
   return (
-    <div className="container mx-auto py-8 px-4">
-      {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-destructive text-destructive-foreground px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-            LIVE
+    <>
+      <SEOHead title={pageTitle} description={pageDescription} />
+      <div className="container mx-auto py-8 px-4">
+        {/* Header Section with enhanced SEO */}
+        <header className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Link href="/" aria-label="Return to homepage">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
           </div>
-          <h1 className="text-4xl font-bold text-destructive">Breaking News</h1>
-        </div>
 
-        <p className="text-muted-foreground text-lg">
-          Stay updated with the latest breaking news and urgent developments
-        </p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-destructive text-destructive-foreground px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+              LIVE
+            </div>
+            <h1 className="text-4xl font-bold text-destructive">
+              Breaking News
+            </h1>
+          </div>
 
-        {!loading && (
-          <div className="text-sm text-muted-foreground mt-2">
-            {filteredArticles.length} breaking news{" "}
-            {filteredArticles.length === 1 ? "article" : "articles"} found
+          <p className="text-muted-foreground text-lg">
+            Stay updated with the latest breaking news and urgent developments.
+            Real-time coverage of current events.
+          </p>
+
+          {!loading && (
+            <div className="text-sm text-muted-foreground mt-2">
+              {filteredArticles.length} breaking news{" "}
+              {filteredArticles.length === 1 ? "article" : "articles"} • Updated
+              continuously
+            </div>
+          )}
+        </header>
+
+        {/* Search Section with SEO labels */}
+        <section className="mb-8" aria-label="Search breaking news">
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search breaking news..."
+              className="pl-8 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search breaking news articles"
+            />
+          </div>
+        </section>
+
+        {/* Content Section */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-destructive"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading breaking news...
+            </p>
           </div>
         )}
-      </div>
 
-      {/* Search Section */}
-      <div className="mb-8">
-        <div className="relative max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search breaking news..."
-            className="pl-8 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Content Section */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-destructive"></div>
-          <p className="mt-4 text-muted-foreground">Loading breaking news...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
-            <Clock className="h-12 w-12 text-destructive" />
+        {error && (
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <Clock className="h-12 w-12 text-destructive" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-destructive">
+              Error Loading Breaking News
+            </h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={fetchBreakingNews} variant="outline">
+              Try Again
+            </Button>
           </div>
-          <h3 className="text-lg font-semibold mb-2 text-destructive">
-            Error Loading Breaking News
-          </h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={fetchBreakingNews} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      )}
+        )}
 
-      {!loading && !error && <BreakingNewsList articles={filteredArticles} />}
-    </div>
+        {!loading && !error && <BreakingNewsList articles={filteredArticles} />}
+      </div>
+    </>
   );
 };
-
 export default BreakingNewsPage;

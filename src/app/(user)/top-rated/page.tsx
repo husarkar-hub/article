@@ -1,4 +1,4 @@
-// app/(user)/top-rated/page.tsx
+// app/(user)/top-rated/page.tsx - SEO Optimized Top Rated Articles Page
 
 "use client";
 
@@ -204,6 +204,83 @@ const TopRatedList = ({ articles }: { articles: Article[] }) => {
   );
 };
 
+// SEO Component for Top Rated Page
+const SEOHead = ({ articles }: { articles: Article[] }) => {
+  useEffect(() => {
+    const topArticleCount = articles.length;
+    const dynamicTitle =
+      topArticleCount > 0
+        ? `Top ${topArticleCount} Rated Articles - Best Content`
+        : "Top Rated Articles - Best Content";
+
+    const dynamicDescription =
+      topArticleCount > 0
+        ? `Discover our top ${topArticleCount} highest-rated articles. Find the best content based on user ratings and engagement. Quality articles you can trust.`
+        : "Discover our highest-rated articles. Find the best content based on user ratings and engagement. Quality articles you can trust.";
+
+    document.title = dynamicTitle;
+
+    // Update meta description
+    let metaDescription = document.querySelector('meta[name="description"]');
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+    metaDescription.setAttribute("content", dynamicDescription);
+
+    // Add structured data for top articles
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "Top Rated Articles",
+      description: dynamicDescription,
+      url: window.location.href,
+      mainEntity: {
+        "@type": "ItemList",
+        numberOfItems: topArticleCount,
+        itemListElement: articles.slice(0, 10).map((article, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          item: {
+            "@type": "Article",
+            headline: article.title,
+            description: article.content?.substring(0, 160) || article.title,
+            url: `${window.location.origin}/article/${article.id}`,
+            datePublished: article.publishedAt,
+            author: {
+              "@type": "Person",
+              name: article.author,
+            },
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: "5",
+              bestRating: "5",
+              ratingCount: article.views,
+            },
+          },
+        })),
+      },
+    };
+
+    // Remove existing structured data
+    const existingScript = document.querySelector(
+      'script[type="application/ld+json"]'
+    );
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    // Add new structured data
+    const script = document.createElement("script") as HTMLScriptElement;
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(structuredData);
+    document.head.appendChild(script);
+  }, [articles]);
+
+  return null;
+};
+
 // --- Top Rated Page Component ---
 const TopRatedPage = () => {
   const [allArticles, setAllArticles] = useState<Article[]>([]);
@@ -308,82 +385,92 @@ const TopRatedPage = () => {
   }, [searchTerm, allArticles]);
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-            TOP RATED
+    <>
+      <SEOHead articles={filteredArticles} />
+      <div className="container mx-auto py-8 px-4">
+        {/* Header Section */}
+        <header className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
           </div>
-          <h1 className="text-4xl font-bold text-primary flex items-center gap-2">
-            <Star className="h-10 w-10 text-yellow-500" />
-            Top Rated Articles
-          </h1>
-        </div>
 
-        <p className="text-muted-foreground text-lg">
-          Discover the most popular and highly viewed articles from our
-          community
-        </p>
-
-        {!loading && (
-          <div className="text-sm text-muted-foreground mt-2">
-            {filteredArticles.length} top rated{" "}
-            {filteredArticles.length === 1 ? "article" : "articles"} found
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+              TOP RATED
+            </div>
+            <h1 className="text-4xl font-bold text-primary flex items-center gap-2">
+              <Star className="h-10 w-10 text-yellow-500" />
+              Top Rated Articles
+            </h1>
           </div>
-        )}
-      </div>
 
-      {/* Search Section */}
-      <div className="mb-8">
-        <div className="relative max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search top rated articles..."
-            className="pl-8 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Content Section */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
-          <p className="mt-4 text-muted-foreground">
-            Loading top rated articles...
+          <p className="text-muted-foreground text-lg">
+            Discover the most popular and highly viewed articles from our
+            community. Quality content ranked by reader engagement and views.
           </p>
-        </div>
-      )}
 
-      {error && (
-        <div className="text-center py-12">
-          <div className="mx-auto w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
-            <Star className="h-12 w-12 text-yellow-500" />
+          {!loading && (
+            <div
+              className="text-sm text-muted-foreground mt-2"
+              role="status"
+              aria-live="polite"
+            >
+              {filteredArticles.length} top rated{" "}
+              {filteredArticles.length === 1 ? "article" : "articles"} found
+            </div>
+          )}
+        </header>
+
+        {/* Search Section */}
+        <section className="mb-8" aria-label="Search top rated articles">
+          <div className="relative max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search top rated articles..."
+              className="pl-8 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search top rated articles"
+            />
           </div>
-          <h3 className="text-lg font-semibold mb-2 text-destructive">
-            Error Loading Top Rated Articles
-          </h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={fetchTopRated} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      )}
+        </section>
 
-      {!loading && !error && <TopRatedList articles={filteredArticles} />}
-    </div>
+        {/* Content Section */}
+        <main role="main">
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+              <p className="mt-4 text-muted-foreground">
+                Loading top rated articles...
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
+                <Star className="h-12 w-12 text-yellow-500" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2 text-destructive">
+                Error Loading Top Rated Articles
+              </h3>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button onClick={fetchTopRated} variant="outline">
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {!loading && !error && <TopRatedList articles={filteredArticles} />}
+        </main>
+      </div>
+    </>
   );
 };
 
